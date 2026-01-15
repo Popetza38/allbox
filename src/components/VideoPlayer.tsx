@@ -12,6 +12,10 @@ import {
     Loader2,
     ChevronRight,
     RotateCw,
+    PictureInPicture2,
+    Camera,
+    Rewind,
+    FastForward,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -46,13 +50,20 @@ const formatTime = (seconds: number): string => {
 };
 
 const PLAYBACK_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+const QUALITY_OPTIONS = [
+    { label: 'อัตโนมัติ', value: 'auto' },
+    { label: '1080p', value: '1080' },
+    { label: '720p', value: '720' },
+    { label: '480p', value: '480' },
+    { label: '360p', value: '360' },
+];
 
 export function VideoPlayer({
     src,
     poster,
     onEnded,
     onTimeUpdate,
-    skipIntroTime = 90,
+    skipIntroTime = 15,
     skipOutroTime = 30,
     onNextEpisode,
     hasNextEpisode = false,
@@ -76,9 +87,72 @@ export function VideoPlayer({
     const [hoverTime, setHoverTime] = useState<number | null>(null);
     const [hoverPosition, setHoverPosition] = useState(0);
     const [rotation, setRotation] = useState(0);
+    const [isMobile, setIsMobile] = useState(false);
+    const [quality, setQuality] = useState('auto');
+    const [showSeekIndicator, setShowSeekIndicator] = useState<'left' | 'right' | null>(null);
+    const [isPiP, setIsPiP] = useState(false);
+    const lastTapRef = useRef<{ time: number; side: 'left' | 'right' } | null>(null);
 
-    const handleRotate = () => {
-        setRotation((prev) => (prev + 90) % 360);
+    // Detect if on mobile device
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // Auto fullscreen when rotating video
+    const handleRotate = async () => {
+        const newRotation = (rotation + 90) % 360;
+        setRotation(newRotation);
+
+        // Auto-enter fullscreen when rotating (for all devices)
+        if (!document.fullscreenElement && containerRef.current) {
+            try {
+                await containerRef.current.requestFullscreen();
+            } catch (error) {
+                // Fallback for webkit browsers
+                const container = containerRef.current as any;
+                if (container.webkitRequestFullscreen) {
+                    try {
+                        container.webkitRequestFullscreen();
+                    } catch (e) {
+                        console.log('Webkit fullscreen request failed:', e);
+                    }
+                } else if (container.msRequestFullscreen) {
+                    // Fallback for IE/Edge
+                    try {
+                        container.msRequestFullscreen();
+                    } catch (e) {
+                        console.log('MS fullscreen request failed:', e);
+                    }
+                }
+            }
+        }
+    };
+
+    // Auto fullscreen on mobile when video starts playing
+    const handleVideoPlay = async () => {
+        setIsPlaying(true);
+
+        // On mobile, auto-enter fullscreen when video starts playing
+        if (isMobile && !document.fullscreenElement && containerRef.current) {
+            try {
+                await containerRef.current.requestFullscreen();
+            } catch (error) {
+                // Fallback: try webkit fullscreen for iOS Safari
+                const video = videoRef.current;
+                if (video && (video as any).webkitEnterFullscreen) {
+                    try {
+                        (video as any).webkitEnterFullscreen();
+                    } catch (e) {
+                        console.log('Webkit fullscreen request failed:', e);
+                    }
+                }
+            }
+        }
     };
 
     // Show/hide controls with timeout
@@ -224,6 +298,92 @@ export function VideoPlayer({
         }
     };
 
+    // Picture-in-Picture handler
+    const togglePiP = async () => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        try {
+            if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
+                setIsPiP(false);
+            } else if (document.pictureInPictureEnabled) {
+                await video.requestPictureInPicture();
+                setIsPiP(true);
+            }
+        } catch (error) {
+            console.log('PiP request failed:', error);
+        }
+    };
+
+    // Screenshot handler
+    const handleScreenshot = () => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const link = document.createElement('a');
+            link.download = `screenshot-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    };
+
+    // Double-tap to seek handler
+    const handleDoubleTap = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        const container = containerRef.current;
+        if (!container || !videoRef.current) return;
+
+        const rect = container.getBoundingClientRect();
+        let clientX: number;
+
+        if ('touches' in e) {
+            clientX = e.touches[0]?.clientX || e.changedTouches[0]?.clientX || 0;
+        } else {
+            clientX = e.clientX;
+        }
+
+        const side = clientX < rect.left + rect.width / 2 ? 'left' : 'right';
+        const now = Date.now();
+
+        if (lastTapRef.current && now - lastTapRef.current.time < 300 && lastTapRef.current.side === side) {
+            // Double tap detected
+            const video = videoRef.current;
+            if (side === 'left') {
+                video.currentTime = Math.max(0, video.currentTime - 10);
+            } else {
+                video.currentTime = Math.min(video.duration, video.currentTime + 10);
+            }
+            setShowSeekIndicator(side);
+            setTimeout(() => setShowSeekIndicator(null), 500);
+            lastTapRef.current = null;
+        } else {
+            lastTapRef.current = { time: now, side };
+        }
+    };
+
+    // PiP event listeners
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const handlePiPEnter = () => setIsPiP(true);
+        const handlePiPLeave = () => setIsPiP(false);
+
+        video.addEventListener('enterpictureinpicture', handlePiPEnter);
+        video.addEventListener('leavepictureinpicture', handlePiPLeave);
+
+        return () => {
+            video.removeEventListener('enterpictureinpicture', handlePiPEnter);
+            video.removeEventListener('leavepictureinpicture', handlePiPLeave);
+        };
+    }, []);
+
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -299,10 +459,15 @@ export function VideoPlayer({
                 ref={videoRef}
                 src={src}
                 poster={poster}
-                className="w-full h-full object-contain cursor-pointer transition-transform duration-300"
-                style={{ transform: `rotate(${rotation}deg)` }}
+                className="cursor-pointer transition-transform duration-300"
+                style={{
+                    transform: `rotate(${rotation}deg)${(rotation === 90 || rotation === 270) ? ' scale(1.78)' : ''}`,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                }}
                 onClick={handlePlayPause}
-                onPlay={() => setIsPlaying(true)}
+                onPlay={handleVideoPlay}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={handleTimeUpdate}
                 onLoadedMetadata={handleLoadedMetadata}
@@ -352,6 +517,36 @@ export function VideoPlayer({
                     ตอนถัดไป
                     <ChevronRight className="w-4 h-4" />
                 </button>
+            )}
+
+            {/* Double-tap seek indicators */}
+            {showSeekIndicator === 'left' && (
+                <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full animate-pulse">
+                    <Rewind className="w-6 h-6 text-white" />
+                    <span className="text-white font-medium">-10 วินาที</span>
+                </div>
+            )}
+            {showSeekIndicator === 'right' && (
+                <div className="absolute right-8 top-1/2 -translate-y-1/2 flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full animate-pulse">
+                    <FastForward className="w-6 h-6 text-white" />
+                    <span className="text-white font-medium">+10 วินาที</span>
+                </div>
+            )}
+
+            {/* Double-tap overlay zones - pointer-events only on mobile */}
+            {isMobile && (
+                <>
+                    <div
+                        className="absolute inset-y-0 left-0 w-1/3"
+                        onClick={handleDoubleTap}
+                        onTouchEnd={handleDoubleTap}
+                    />
+                    <div
+                        className="absolute inset-y-0 right-0 w-1/3"
+                        onClick={handleDoubleTap}
+                        onTouchEnd={handleDoubleTap}
+                    />
+                </>
             )}
 
             {/* Controls Overlay */}
@@ -467,6 +662,28 @@ export function VideoPlayer({
                             <RotateCw className="w-5 h-5" />
                         </Button>
 
+                        {/* Screenshot */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-white hover:bg-white/20"
+                            onClick={handleScreenshot}
+                            title="ถ่ายภาพหน้าจอ"
+                        >
+                            <Camera className="w-5 h-5" />
+                        </Button>
+
+                        {/* Picture-in-Picture */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`text-white hover:bg-white/20 ${isPiP ? 'bg-primary/30' : ''}`}
+                            onClick={togglePiP}
+                            title="Picture-in-Picture"
+                        >
+                            <PictureInPicture2 className="w-5 h-5" />
+                        </Button>
+
                         {/* Download */}
                         <Button
                             variant="ghost"
@@ -502,6 +719,22 @@ export function VideoPlayer({
                                                 className={playbackSpeed === speed ? "bg-primary/20" : ""}
                                             >
                                                 {speed}x
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                        ความคมชัด: {quality === 'auto' ? 'อัตโนมัติ' : `${quality}p`}
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent>
+                                        {QUALITY_OPTIONS.map((q) => (
+                                            <DropdownMenuItem
+                                                key={q.value}
+                                                onClick={() => setQuality(q.value)}
+                                                className={quality === q.value ? "bg-primary/20" : ""}
+                                            >
+                                                {q.label}
                                             </DropdownMenuItem>
                                         ))}
                                     </DropdownMenuSubContent>
