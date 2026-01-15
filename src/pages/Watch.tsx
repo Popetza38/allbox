@@ -1,13 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, AlertCircle, SkipForward } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  AlertCircle,
+  SkipForward,
+  Hand,
+} from "lucide-react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { fetchDramaDetail, fetchAllEpisodes, getVideoUrl } from "@/lib/api";
 import { addToWatchHistory, getAutoPlayEnabled, setAutoPlayEnabled } from "@/lib/history";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 
 const Watch = () => {
   const { bookId, episodeNum } = useParams<{ bookId: string; episodeNum: string }>();
@@ -16,7 +26,6 @@ const Watch = () => {
   const [episodePage, setEpisodePage] = useState(1);
   const [videoError, setVideoError] = useState(false);
   const [autoPlay, setAutoPlay] = useState(() => getAutoPlayEnabled());
-  const videoRef = useRef<HTMLVideoElement>(null);
   const lastSaveRef = useRef<number>(0);
   const episodesPerPage = 30;
 
@@ -64,17 +73,29 @@ const Watch = () => {
     }
   }, [drama, bookId, currentEpisode, episodes]);
 
+  // Toggle auto-play
+  const toggleAutoPlay = () => {
+    const newValue = !autoPlay;
+    setAutoPlay(newValue);
+    setAutoPlayEnabled(newValue);
+  };
+
+  const goToEpisode = (ep: number) => {
+    if (ep >= 1 && ep <= totalEpisodes) {
+      navigate(`/watch/${bookId}/${ep}`);
+    }
+  };
+
   // Handle video time update - save progress periodically
-  const handleTimeUpdate = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || !bookId || !drama) return;
+  const handleVideoTimeUpdate = useCallback((currentTime: number, duration: number) => {
+    if (!bookId || !drama) return;
 
     const now = Date.now();
     // Save progress every 10 seconds
     if (now - lastSaveRef.current < 10000) return;
     lastSaveRef.current = now;
 
-    const progress = video.duration ? (video.currentTime / video.duration) * 100 : 0;
+    const progress = duration ? (currentTime / duration) * 100 : 0;
     addToWatchHistory({
       bookId,
       bookName: drama.bookName || "Unknown",
@@ -92,18 +113,11 @@ const Watch = () => {
     }
   }, [autoPlay, currentEpisode, totalEpisodes, bookId, navigate]);
 
-  // Toggle auto-play
-  const toggleAutoPlay = () => {
-    const newValue = !autoPlay;
-    setAutoPlay(newValue);
-    setAutoPlayEnabled(newValue);
-  };
-
-  const goToEpisode = (ep: number) => {
-    if (ep >= 1 && ep <= totalEpisodes) {
-      navigate(`/watch/${bookId}/${ep}`);
-    }
-  };
+  // Swipe gestures for mobile
+  const { touchHandlers, isSwiping } = useSwipeGesture({
+    onSwipeLeft: () => goToEpisode(currentEpisode + 1),
+    onSwipeRight: () => goToEpisode(currentEpisode - 1),
+  });
 
   const getEpisodesForCurrentPage = () => {
     const start = (episodePage - 1) * episodesPerPage;
@@ -134,29 +148,27 @@ const Watch = () => {
           </Link>
 
           {/* Video Player */}
-          <div className="video-container aspect-video mb-6 rounded-2xl overflow-hidden bg-black">
+          <div
+            className={`aspect-video mb-6 ${isSwiping ? "opacity-80" : ""}`}
+            {...touchHandlers}
+          >
             {episodesLoading ? (
-              <div className="w-full h-full flex items-center justify-center">
-                <Skeleton className="w-full h-full" />
+              <div className="w-full h-full flex items-center justify-center bg-card rounded-2xl">
+                <Skeleton className="w-full h-full rounded-2xl" />
               </div>
             ) : videoUrl && !videoError ? (
-              <video
-                ref={videoRef}
-                key={videoUrl}
+              <VideoPlayer
                 src={videoUrl}
-                controls
-                autoPlay
-                playsInline
-                className="w-full h-full"
-                controlsList="nodownload"
-                onError={() => setVideoError(true)}
-                onTimeUpdate={handleTimeUpdate}
+                poster={drama?.coverWap}
                 onEnded={handleVideoEnded}
-              >
-                เบราว์เซอร์ไม่รองรับการเล่นวิดีโอ
-              </video>
+                onTimeUpdate={handleVideoTimeUpdate}
+                skipIntroTime={90}
+                skipOutroTime={30}
+                onNextEpisode={() => goToEpisode(currentEpisode + 1)}
+                hasNextEpisode={currentEpisode < totalEpisodes}
+              />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-card">
+              <div className="w-full h-full flex items-center justify-center bg-card rounded-2xl">
                 <div className="text-center text-muted-foreground p-6">
                   {videoError ? (
                     <>
@@ -176,6 +188,13 @@ const Watch = () => {
                     </>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Swipe indicator */}
+            {isSwiping && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <Hand className="w-12 h-12 text-white/50 animate-pulse" />
               </div>
             )}
           </div>
