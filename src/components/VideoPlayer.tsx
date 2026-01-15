@@ -280,7 +280,11 @@ export function VideoPlayer({
     return (
         <div
             ref={containerRef}
-            className={`relative group bg-black ${isFullscreen ? "fixed inset-0 z-50" : "rounded-2xl overflow-hidden"}`}
+            className={`relative group bg-black ${isFullscreen ? "fixed inset-0 z-50" : "rounded-2xl overflow-hidden w-full max-w-full mx-auto"}`}
+            style={{
+                aspectRatio: isFullscreen ? undefined : '9 / 16',
+                maxHeight: isFullscreen ? '100vh' : 'calc(100vh - 200px)'
+            }}
             onMouseMove={resetControlsTimeout}
             onMouseLeave={() => isPlaying && setShowControls(false)}
         >
