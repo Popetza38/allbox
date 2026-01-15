@@ -210,6 +210,9 @@ export function VideoPlayer({
         }
     };
 
+    // Ref to track if auto-next has been triggered to prevent multiple calls
+    const autoNextTriggeredRef = useRef(false);
+
     const handleTimeUpdate = () => {
         const video = videoRef.current;
         if (!video) return;
@@ -220,6 +223,21 @@ export function VideoPlayer({
         // Show skip outro button (within last skipOutroTime seconds)
         const timeRemaining = video.duration - video.currentTime;
         setShowSkipOutro(timeRemaining < skipOutroTime && timeRemaining > 5);
+
+        // Auto-next fallback: when video is within 0.5 seconds of ending
+        // This works even when 'ended' event doesn't fire (e.g., iOS fullscreen)
+        if (timeRemaining <= 0.5 && timeRemaining > 0 && video.duration > 0 && !autoNextTriggeredRef.current) {
+            if (hasNextEpisode && onNextEpisode) {
+                autoNextTriggeredRef.current = true;
+                console.log('Auto-next triggered via timeUpdate fallback');
+                onNextEpisode();
+            }
+        }
+
+        // Reset auto-next flag when video is not near the end (for rewatching)
+        if (timeRemaining > 5) {
+            autoNextTriggeredRef.current = false;
+        }
     };
 
     const handleLoadedMetadata = () => {
