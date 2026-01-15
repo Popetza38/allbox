@@ -411,6 +411,27 @@ export function VideoPlayer({
         };
     }, []);
 
+    // Auto-next episode when video ends (using direct event listener for reliability)
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const handleVideoEnded = () => {
+            console.log('Video ended! hasNextEpisode:', hasNextEpisode);
+            if (hasNextEpisode && onNextEpisode) {
+                console.log('Calling onNextEpisode...');
+                onNextEpisode();
+            }
+            onEnded?.();
+        };
+
+        video.addEventListener('ended', handleVideoEnded);
+
+        return () => {
+            video.removeEventListener('ended', handleVideoEnded);
+        };
+    }, [hasNextEpisode, onNextEpisode, onEnded]);
+
     // Cast handler using Remote Playback API
     const handleCast = async () => {
         const video = videoRef.current;
@@ -552,14 +573,7 @@ export function VideoPlayer({
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={handleTimeUpdate}
                 onLoadedMetadata={handleLoadedMetadata}
-                onEnded={() => {
-                    // Auto-play next episode when video ends
-                    if (hasNextEpisode && onNextEpisode) {
-                        onNextEpisode();
-                    }
-                    // Always call onEnded as fallback
-                    onEnded?.();
-                }}
+
                 onWaiting={() => setIsBuffering(true)}
                 onPlaying={() => setIsBuffering(false)}
                 playsInline
