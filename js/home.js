@@ -68,16 +68,30 @@ async function initHomePage() {
         setupHero(allDramas.slice(0, 5));
     }
 
-    // Load remaining pages in background
-    const [homeData2, homeData3, recommendData] = await Promise.all([
+    // Load remaining pages in background (10 pages total for maximum content)
+    const [homeData2, homeData3, homeData4, homeData5, homeData6, homeData7, homeData8, homeData9, homeData10, recommendData] = await Promise.all([
         API.getHome(2),
         API.getHome(3),
+        API.getHome(4),
+        API.getHome(5),
+        API.getHome(6),
+        API.getHome(7),
+        API.getHome(8),
+        API.getHome(9),
+        API.getHome(10),
         recommendDataPromise
     ]);
 
     // Combine all home data
     if (homeData2?.success) allDramas = allDramas.concat(homeData2.data || []);
     if (homeData3?.success) allDramas = allDramas.concat(homeData3.data || []);
+    if (homeData4?.success) allDramas = allDramas.concat(homeData4.data || []);
+    if (homeData5?.success) allDramas = allDramas.concat(homeData5.data || []);
+    if (homeData6?.success) allDramas = allDramas.concat(homeData6.data || []);
+    if (homeData7?.success) allDramas = allDramas.concat(homeData7.data || []);
+    if (homeData8?.success) allDramas = allDramas.concat(homeData8.data || []);
+    if (homeData9?.success) allDramas = allDramas.concat(homeData9.data || []);
+    if (homeData10?.success) allDramas = allDramas.concat(homeData10.data || []);
 
     // Process home data
     if (allDramas.length > 0) {
@@ -263,6 +277,99 @@ function renderSeriesSlider(sliderId, dramas) {
     if (!slider || !dramas.length) return;
 
     slider.innerHTML = dramas.map(drama => createSeriesCard(drama)).join('');
+
+    // Setup drag-to-slide functionality
+    setupSliderDrag(slider);
+}
+
+// Setup drag-to-slide for a slider element
+function setupSliderDrag(slider) {
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+    let velocity = 0;
+    let lastX = 0;
+    let animationId = null;
+
+    // Mouse events for desktop
+    slider.addEventListener('mousedown', (e) => {
+        isDown = true;
+        slider.classList.add('dragging');
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+        velocity = 0;
+        lastX = e.pageX;
+        if (animationId) cancelAnimationFrame(animationId);
+    });
+
+    slider.addEventListener('mouseleave', () => {
+        if (isDown) {
+            isDown = false;
+            slider.classList.remove('dragging');
+            applyMomentum();
+        }
+    });
+
+    slider.addEventListener('mouseup', () => {
+        isDown = false;
+        slider.classList.remove('dragging');
+        applyMomentum();
+    });
+
+    slider.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - slider.offsetLeft;
+        const walk = (x - startX) * 1.5; // Scroll speed multiplier
+        slider.scrollLeft = scrollLeft - walk;
+        velocity = e.pageX - lastX;
+        lastX = e.pageX;
+    });
+
+    // Touch events for mobile
+    slider.addEventListener('touchstart', (e) => {
+        isDown = true;
+        startX = e.touches[0].pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+        velocity = 0;
+        lastX = e.touches[0].pageX;
+        if (animationId) cancelAnimationFrame(animationId);
+    }, { passive: true });
+
+    slider.addEventListener('touchend', () => {
+        isDown = false;
+        applyMomentum();
+    });
+
+    slider.addEventListener('touchmove', (e) => {
+        if (!isDown) return;
+        const x = e.touches[0].pageX - slider.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        slider.scrollLeft = scrollLeft - walk;
+        velocity = e.touches[0].pageX - lastX;
+        lastX = e.touches[0].pageX;
+    }, { passive: true });
+
+    // Apply momentum scrolling after drag ends
+    function applyMomentum() {
+        if (Math.abs(velocity) > 1) {
+            animationId = requestAnimationFrame(() => {
+                slider.scrollLeft -= velocity;
+                velocity *= 0.95; // Friction
+                if (Math.abs(velocity) > 0.5) {
+                    applyMomentum();
+                }
+            });
+        }
+    }
+
+    // Prevent click on drag
+    slider.addEventListener('click', (e) => {
+        if (Math.abs(velocity) > 5) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, true);
 }
 
 // Create series card HTML

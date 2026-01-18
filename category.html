@@ -104,6 +104,9 @@
                 loadCategoryDramas(catId);
             } else if (type) {
                 loadTypeDramas(type);
+            } else {
+                // Load all dramas by default
+                loadTypeDramas('all');
             }
 
             // Search
@@ -184,23 +187,45 @@
             grid.innerHTML = '<div class="empty-state"><div class="loader"><div class="loader-ring"></div></div></div>';
 
             try {
-                const result = await API.getByCategory(catId);
-                console.log('Category API response:', result);
+                // Load 10 pages for maximum content
+                const results = await Promise.all([
+                    API.getByCategory(catId, 1),
+                    API.getByCategory(catId, 2),
+                    API.getByCategory(catId, 3),
+                    API.getByCategory(catId, 4),
+                    API.getByCategory(catId, 5),
+                    API.getByCategory(catId, 6),
+                    API.getByCategory(catId, 7),
+                    API.getByCategory(catId, 8),
+                    API.getByCategory(catId, 9),
+                    API.getByCategory(catId, 10)
+                ]);
 
-                if (result?.success && result.data) {
-                    // Get category name from types array
-                    const categoryName = result.data.types?.find(t => t.id === result.data.currentType)?.name || 'หมวดหมู่';
-                    const bookList = result.data.bookList || [];
+                let allDramas = [];
+                let categoryName = 'หมวดหมู่';
+                let totalCount = 0;
 
-                    title.textContent = `${categoryName}: ${result.data.total || bookList.length} รายการ`;
-
-                    if (bookList.length > 0) {
-                        renderSeriesGrid(grid, bookList);
-                    } else {
-                        grid.innerHTML = '<div class="empty-state"><i class="fas fa-film"></i><p>ไม่พบซีรี่ย์ในหมวดหมู่นี้</p></div>';
+                results.forEach(result => {
+                    if (result?.success && result.data) {
+                        // Get category name from first valid result
+                        if (!categoryName || categoryName === 'หมวดหมู่') {
+                            categoryName = result.data.types?.find(t => t.id === result.data.currentType)?.name || 'หมวดหมู่';
+                            totalCount = result.data.total || 0;
+                        }
+                        if (result.data.bookList) {
+                            allDramas = allDramas.concat(result.data.bookList);
+                        }
                     }
+                });
+
+                console.log('Category dramas loaded:', allDramas.length, 'items');
+
+                title.textContent = `${categoryName} (${allDramas.length} เรื่อง)`;
+
+                if (allDramas.length > 0) {
+                    renderSeriesGrid(grid, allDramas);
                 } else {
-                    throw new Error('Invalid response');
+                    grid.innerHTML = '<div class="empty-state"><i class="fas fa-film"></i><p>ไม่พบซีรี่ย์ในหมวดหมู่นี้</p></div>';
                 }
             } catch (error) {
                 console.error('Failed to load category dramas:', error);
@@ -216,35 +241,58 @@
             section.style.display = 'block';
             grid.innerHTML = '<div class="empty-state"><div class="loader"><div class="loader-ring"></div></div></div>';
 
-            let result;
             let dramas = [];
 
             try {
                 if (type === 'recommend') {
-                    result = await API.getRecommend();
+                    const result = await API.getRecommend();
                     title.textContent = 'แนะนำสำหรับคุณ';
                     dramas = result?.data || [];
                 } else if (type === 'dubbed') {
-                    result = await API.getByCategory(683);
+                    // Load multiple pages for dubbed content
+                    const results = await Promise.all([
+                        API.getByCategory(683, 1),
+                        API.getByCategory(683, 2),
+                        API.getByCategory(683, 3),
+                        API.getByCategory(683, 4),
+                        API.getByCategory(683, 5)
+                    ]);
                     title.textContent = 'พากย์ไทย';
-                    dramas = result?.data?.bookList || [];
-                } else if (type === 'popular') {
-                    result = await API.getHome();
-                    title.textContent = 'ยอดนิยม';
-                    dramas = result?.data || [];
-                } else if (type === 'new') {
-                    result = await API.getHome();
-                    title.textContent = 'มาใหม่';
-                    dramas = result?.data || [];
+                    results.forEach(r => {
+                        if (r?.data?.bookList) dramas = dramas.concat(r.data.bookList);
+                    });
+                } else if (type === 'popular' || type === 'new') {
+                    // Load 10 pages for maximum content
+                    const results = await Promise.all([
+                        API.getHome(1), API.getHome(2), API.getHome(3), API.getHome(4), API.getHome(5),
+                        API.getHome(6), API.getHome(7), API.getHome(8), API.getHome(9), API.getHome(10)
+                    ]);
+                    title.textContent = type === 'popular' ? 'ยอดนิยม' : 'มาใหม่';
+                    results.forEach(r => {
+                        if (r?.success && r.data) dramas = dramas.concat(r.data);
+                    });
+
+                    // Filter for popular if needed
+                    if (type === 'popular') {
+                        const popularOnly = dramas.filter(d => d.cornerName?.includes('มาแรง'));
+                        if (popularOnly.length > 20) dramas = popularOnly;
+                    }
                 } else {
-                    result = await API.getHome();
-                    title.textContent = 'ซีรี่ย์';
-                    dramas = result?.data || [];
+                    // Default: load 10 pages
+                    const results = await Promise.all([
+                        API.getHome(1), API.getHome(2), API.getHome(3), API.getHome(4), API.getHome(5),
+                        API.getHome(6), API.getHome(7), API.getHome(8), API.getHome(9), API.getHome(10)
+                    ]);
+                    title.textContent = 'ซีรี่ย์ทั้งหมด';
+                    results.forEach(r => {
+                        if (r?.success && r.data) dramas = dramas.concat(r.data);
+                    });
                 }
 
-                console.log('Type dramas result:', result);
+                console.log('Type dramas loaded:', dramas.length, 'items');
 
                 if (dramas.length > 0) {
+                    title.textContent += ` (${dramas.length} เรื่อง)`;
                     renderSeriesGrid(grid, dramas);
                 } else {
                     grid.innerHTML = '<div class="empty-state"><i class="fas fa-film"></i><p>ไม่พบซีรี่ย์</p></div>';

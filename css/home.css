@@ -238,6 +238,23 @@
     display: none;
 }
 
+/* Dragging state */
+.series-slider.dragging {
+    cursor: grabbing;
+    cursor: -webkit-grabbing;
+    scroll-behavior: auto;
+    user-select: none;
+}
+
+.series-slider.dragging .series-card {
+    pointer-events: none;
+}
+
+.series-slider:not(.dragging) {
+    cursor: grab;
+    cursor: -webkit-grab;
+}
+
 /* Series Card */
 .series-card {
     flex: 0 0 140px;
