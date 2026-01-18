@@ -29,40 +29,76 @@ function hideLoadingScreen() {
     }
 }
 
-// Initialize home page
+// Preload hero images for faster display
+function preloadImages(urls) {
+    return Promise.all(
+        urls.slice(0, 3).map(url => {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = resolve;
+                img.onerror = resolve; // Continue even if failed
+                img.src = url;
+            });
+        })
+    );
+}
+
+// Initialize home page with optimized loading
 async function initHomePage() {
     // Show skeleton loaders
     showSkeletons();
 
-    // Load data in parallel - fetch 3 pages for more content
-    const [homeData1, homeData2, homeData3, recommendData] = await Promise.all([
-        API.getHome(1),
+    // Load first page immediately, others in background
+    const homeData1Promise = API.getHome(1);
+    const recommendDataPromise = API.getRecommend();
+
+    // Get first page data quickly
+    const homeData1 = await homeData1Promise;
+
+    // Process and show first data immediately
+    let allDramas = [];
+    if (homeData1?.success) {
+        allDramas = homeData1.data || [];
+
+        // Preload hero images first
+        const heroImages = allDramas.slice(0, 5).map(d => d.cover);
+        preloadImages(heroImages);
+
+        // Setup hero immediately
+        setupHero(allDramas.slice(0, 5));
+    }
+
+    // Load remaining pages in background
+    const [homeData2, homeData3, recommendData] = await Promise.all([
         API.getHome(2),
         API.getHome(3),
-        API.getRecommend()
+        recommendDataPromise
     ]);
 
     // Combine all home data
-    let allDramas = [];
-    if (homeData1?.success) allDramas = allDramas.concat(homeData1.data || []);
     if (homeData2?.success) allDramas = allDramas.concat(homeData2.data || []);
     if (homeData3?.success) allDramas = allDramas.concat(homeData3.data || []);
 
     // Process home data
     if (allDramas.length > 0) {
-        // Setup hero with first 5 dramas
-        setupHero(allDramas.slice(0, 5));
-
         // Filter dramas for different categories
         const dubbed = allDramas.filter(d => d.name?.includes('พากย์ไทย'));
         const sub = allDramas.filter(d => !d.name?.includes('พากย์ไทย'));
         const popular = allDramas.filter(d => d.cornerName?.includes('มาแรง'));
 
-        // Render categories with more items
-        renderSeriesSlider('dubbed-slider', dubbed.length ? dubbed : allDramas.slice(0, 15));
-        renderSeriesSlider('sub-slider', sub.length ? sub : allDramas.slice(5, 20));
-        renderSeriesSlider('new-slider', allDramas);
-        renderSeriesSlider('popular-slider', popular.length ? popular : allDramas);
+        // Render categories progressively using requestIdleCallback for better performance
+        const renderTasks = [
+            () => renderSeriesSlider('dubbed-slider', dubbed.length ? dubbed : allDramas.slice(0, 15)),
+            () => renderSeriesSlider('sub-slider', sub.length ? sub : allDramas.slice(5, 20)),
+            () => renderSeriesSlider('new-slider', allDramas),
+            () => renderSeriesSlider('popular-slider', popular.length ? popular : allDramas)
+        ];
+
+        // Execute renders with micro-breaks for smoother UI
+        for (const task of renderTasks) {
+            task();
+            await new Promise(r => setTimeout(r, 0)); // Allow UI updates
+        }
     }
 
     // Render recommendations
@@ -257,7 +293,7 @@ function createSeriesCard(drama) {
     `;
 }
 
-// Toggle favorite
+// Toggle favorite - Optimized to update only the button
 function toggleFavorite(bookId, name, cover) {
     const isFav = Storage.favorites.toggle({
         bookId,
@@ -267,10 +303,16 @@ function toggleFavorite(bookId, name, cover) {
 
     Utils.toast(isFav ? 'เพิ่มในรายการโปรดแล้ว' : 'ลบออกจากรายการโปรดแล้ว', 'success');
 
-    // Refresh hero to update button
-    if (heroSlides.length) {
-        setupHero(heroSlides);
-        goToHeroSlide(currentHeroIndex);
+    // Update only the favorite button instead of rebuilding entire hero
+    const currentSlide = document.querySelector(`.hero-slide[data-index="${currentHeroIndex}"]`);
+    if (currentSlide) {
+        const favBtn = currentSlide.querySelector('.hero-btn.secondary');
+        if (favBtn) {
+            favBtn.innerHTML = `
+                <i class="fas fa-heart"></i>
+                ${isFav ? 'บันทึกแล้ว' : 'บันทึก'}
+            `;
+        }
     }
 }
 

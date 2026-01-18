@@ -1,10 +1,64 @@
 // ========================================
-// API Module
+// API Module with Caching
 // ========================================
 
 const API = {
-    // Base fetch helper
-    async fetch(endpoint, options = {}) {
+    // Cache settings
+    CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+
+    // Get cached data
+    getCache(key) {
+        try {
+            const cached = sessionStorage.getItem(`api_cache_${key}`);
+            if (!cached) return null;
+
+            const { data, timestamp } = JSON.parse(cached);
+            if (Date.now() - timestamp > this.CACHE_DURATION) {
+                sessionStorage.removeItem(`api_cache_${key}`);
+                return null;
+            }
+            return data;
+        } catch {
+            return null;
+        }
+    },
+
+    // Set cache data
+    setCache(key, data) {
+        try {
+            sessionStorage.setItem(`api_cache_${key}`, JSON.stringify({
+                data,
+                timestamp: Date.now()
+            }));
+        } catch {
+            // Storage full, clear old cache
+            this.clearOldCache();
+        }
+    },
+
+    // Clear old cache entries
+    clearOldCache() {
+        const keys = Object.keys(sessionStorage);
+        keys.forEach(key => {
+            if (key.startsWith('api_cache_')) {
+                sessionStorage.removeItem(key);
+            }
+        });
+    },
+
+    // Base fetch helper with caching
+    async fetch(endpoint, options = {}, useCache = true) {
+        const cacheKey = endpoint;
+
+        // Check cache first (only for GET requests without body)
+        if (useCache && !options.body) {
+            const cached = this.getCache(cacheKey);
+            if (cached) {
+                console.log('📦 Cache hit:', endpoint);
+                return cached;
+            }
+        }
+
         try {
             const url = `${CONFIG.API_BASE_URL}${endpoint}`;
             const response = await fetch(url, {
@@ -19,7 +73,14 @@ const API = {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            return await response.json();
+            const data = await response.json();
+
+            // Cache successful responses
+            if (useCache && !options.body) {
+                this.setCache(cacheKey, data);
+            }
+
+            return data;
         } catch (error) {
             console.error('API Error:', error);
             throw error;
