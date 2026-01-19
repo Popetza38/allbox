@@ -29,90 +29,46 @@ function hideLoadingScreen() {
     }
 }
 
-// Preload hero images for faster display
-function preloadImages(urls) {
-    return Promise.all(
-        urls.slice(0, 3).map(url => {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = resolve;
-                img.onerror = resolve; // Continue even if failed
-                img.src = url;
-            });
-        })
-    );
-}
-
-// Initialize home page with optimized loading
+// Initialize home page
 async function initHomePage() {
     // Show skeleton loaders
     showSkeletons();
 
-    // Load first page immediately, others in background
-    const homeData1Promise = API.getHome(1);
-    const recommendDataPromise = API.getRecommend();
-
-    // Get first page data quickly
-    const homeData1 = await homeData1Promise;
-
-    // Process and show first data immediately
-    let allDramas = [];
-    if (homeData1?.success) {
-        allDramas = homeData1.data || [];
-
-        // Preload hero images first
-        const heroImages = allDramas.slice(0, 5).map(d => d.cover);
-        preloadImages(heroImages);
-
-        // Setup hero immediately
-        setupHero(allDramas.slice(0, 5));
-    }
-
-    // Load remaining pages in background (10 pages total for maximum content)
-    const [homeData2, homeData3, homeData4, homeData5, homeData6, homeData7, homeData8, homeData9, homeData10, recommendData] = await Promise.all([
+    // Load data in parallel - fetch 6 pages for more content
+    const [homeData1, homeData2, homeData3, homeData4, homeData5, homeData6, recommendData] = await Promise.all([
+        API.getHome(1),
         API.getHome(2),
         API.getHome(3),
         API.getHome(4),
         API.getHome(5),
         API.getHome(6),
-        API.getHome(7),
-        API.getHome(8),
-        API.getHome(9),
-        API.getHome(10),
-        recommendDataPromise
+        API.getRecommend()
     ]);
 
     // Combine all home data
+    let allDramas = [];
+    if (homeData1?.success) allDramas = allDramas.concat(homeData1.data || []);
     if (homeData2?.success) allDramas = allDramas.concat(homeData2.data || []);
     if (homeData3?.success) allDramas = allDramas.concat(homeData3.data || []);
     if (homeData4?.success) allDramas = allDramas.concat(homeData4.data || []);
     if (homeData5?.success) allDramas = allDramas.concat(homeData5.data || []);
     if (homeData6?.success) allDramas = allDramas.concat(homeData6.data || []);
-    if (homeData7?.success) allDramas = allDramas.concat(homeData7.data || []);
-    if (homeData8?.success) allDramas = allDramas.concat(homeData8.data || []);
-    if (homeData9?.success) allDramas = allDramas.concat(homeData9.data || []);
-    if (homeData10?.success) allDramas = allDramas.concat(homeData10.data || []);
 
     // Process home data
     if (allDramas.length > 0) {
+        // Setup hero with first 5 dramas
+        setupHero(allDramas.slice(0, 5));
+
         // Filter dramas for different categories
         const dubbed = allDramas.filter(d => d.name?.includes('พากย์ไทย'));
         const sub = allDramas.filter(d => !d.name?.includes('พากย์ไทย'));
         const popular = allDramas.filter(d => d.cornerName?.includes('มาแรง'));
 
-        // Render categories progressively using requestIdleCallback for better performance
-        const renderTasks = [
-            () => renderSeriesSlider('dubbed-slider', dubbed.length ? dubbed : allDramas.slice(0, 15)),
-            () => renderSeriesSlider('sub-slider', sub.length ? sub : allDramas.slice(5, 20)),
-            () => renderSeriesSlider('new-slider', allDramas),
-            () => renderSeriesSlider('popular-slider', popular.length ? popular : allDramas)
-        ];
-
-        // Execute renders with micro-breaks for smoother UI
-        for (const task of renderTasks) {
-            task();
-            await new Promise(r => setTimeout(r, 0)); // Allow UI updates
-        }
+        // Render categories with more items
+        renderSeriesSlider('dubbed-slider', dubbed.length ? dubbed : allDramas.slice(0, 15));
+        renderSeriesSlider('sub-slider', sub.length ? sub : allDramas.slice(5, 20));
+        renderSeriesSlider('new-slider', allDramas);
+        renderSeriesSlider('popular-slider', popular.length ? popular : allDramas);
     }
 
     // Render recommendations
@@ -277,124 +233,6 @@ function renderSeriesSlider(sliderId, dramas) {
     if (!slider || !dramas.length) return;
 
     slider.innerHTML = dramas.map(drama => createSeriesCard(drama)).join('');
-
-    // Setup drag-to-slide functionality
-    setupSliderDrag(slider);
-}
-
-// Setup drag-to-slide for a slider element
-function setupSliderDrag(slider) {
-    let isDown = false;
-    let startX;
-    let scrollLeft;
-    let velocity = 0;
-    let lastX = 0;
-    let animationId = null;
-    let hasDragged = false; // Track if user actually dragged
-    let dragStartX = 0; // Track starting position for drag detection
-
-    // Mouse events for desktop
-    slider.addEventListener('mousedown', (e) => {
-        isDown = true;
-        hasDragged = false; // Reset drag flag
-        slider.classList.add('dragging');
-        startX = e.pageX - slider.offsetLeft;
-        dragStartX = e.pageX; // Store initial position
-        scrollLeft = slider.scrollLeft;
-        velocity = 0;
-        lastX = e.pageX;
-        if (animationId) cancelAnimationFrame(animationId);
-    });
-
-    slider.addEventListener('mouseleave', () => {
-        if (isDown) {
-            isDown = false;
-            slider.classList.remove('dragging');
-            applyMomentum();
-        }
-    });
-
-    slider.addEventListener('mouseup', () => {
-        isDown = false;
-        slider.classList.remove('dragging');
-        applyMomentum();
-    });
-
-    slider.addEventListener('mousemove', (e) => {
-        if (!isDown) return;
-        const x = e.pageX - slider.offsetLeft;
-        const walk = (x - startX) * 1.5; // Scroll speed multiplier
-
-        // Mark as dragged if moved more than 10px
-        if (Math.abs(e.pageX - dragStartX) > 10) {
-            hasDragged = true;
-        }
-
-        if (hasDragged) {
-            e.preventDefault();
-            slider.scrollLeft = scrollLeft - walk;
-        }
-        velocity = e.pageX - lastX;
-        lastX = e.pageX;
-    });
-
-    // Touch events for mobile
-    slider.addEventListener('touchstart', (e) => {
-        isDown = true;
-        hasDragged = false;
-        startX = e.touches[0].pageX - slider.offsetLeft;
-        dragStartX = e.touches[0].pageX;
-        scrollLeft = slider.scrollLeft;
-        velocity = 0;
-        lastX = e.touches[0].pageX;
-        if (animationId) cancelAnimationFrame(animationId);
-    }, { passive: true });
-
-    slider.addEventListener('touchend', () => {
-        isDown = false;
-        applyMomentum();
-    });
-
-    slider.addEventListener('touchmove', (e) => {
-        if (!isDown) return;
-        const x = e.touches[0].pageX - slider.offsetLeft;
-        const walk = (x - startX) * 1.5;
-
-        // Mark as dragged if moved more than 10px
-        if (Math.abs(e.touches[0].pageX - dragStartX) > 10) {
-            hasDragged = true;
-        }
-
-        if (hasDragged) {
-            slider.scrollLeft = scrollLeft - walk;
-        }
-        velocity = e.touches[0].pageX - lastX;
-        lastX = e.touches[0].pageX;
-    }, { passive: true });
-
-    // Apply momentum scrolling after drag ends
-    function applyMomentum() {
-        if (Math.abs(velocity) > 1) {
-            animationId = requestAnimationFrame(() => {
-                slider.scrollLeft -= velocity;
-                velocity *= 0.95; // Friction
-                if (Math.abs(velocity) > 0.5) {
-                    applyMomentum();
-                }
-            });
-        }
-    }
-
-    // Prevent click only when user actually dragged
-    slider.addEventListener('click', (e) => {
-        if (hasDragged) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        // Reset for next interaction
-        hasDragged = false;
-        velocity = 0;
-    }, true);
 }
 
 // Create series card HTML
@@ -425,7 +263,7 @@ function createSeriesCard(drama) {
     `;
 }
 
-// Toggle favorite - Optimized to update only the button
+// Toggle favorite
 function toggleFavorite(bookId, name, cover) {
     const isFav = Storage.favorites.toggle({
         bookId,
@@ -435,16 +273,10 @@ function toggleFavorite(bookId, name, cover) {
 
     Utils.toast(isFav ? 'เพิ่มในรายการโปรดแล้ว' : 'ลบออกจากรายการโปรดแล้ว', 'success');
 
-    // Update only the favorite button instead of rebuilding entire hero
-    const currentSlide = document.querySelector(`.hero-slide[data-index="${currentHeroIndex}"]`);
-    if (currentSlide) {
-        const favBtn = currentSlide.querySelector('.hero-btn.secondary');
-        if (favBtn) {
-            favBtn.innerHTML = `
-                <i class="fas fa-heart"></i>
-                ${isFav ? 'บันทึกแล้ว' : 'บันทึก'}
-            `;
-        }
+    // Refresh hero to update button
+    if (heroSlides.length) {
+        setupHero(heroSlides);
+        goToHeroSlide(currentHeroIndex);
     }
 }
 
