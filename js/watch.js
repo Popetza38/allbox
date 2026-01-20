@@ -301,6 +301,9 @@ function renderEpisodesList() {
 async function switchEpisode(index) {
     if (index < 0 || index >= chaptersData.length) return;
 
+    // Save fullscreen state before switching
+    const wasFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+
     currentChapterIndex = index;
     chapterId = chaptersData[index].chapterId;
     episodeNum = index + 1;
@@ -315,6 +318,19 @@ async function switchEpisode(index) {
     videoLoading.classList.remove('hidden');
     await loadVideo();
     updateNavigationButtons();
+
+    // Restore fullscreen state if it was fullscreen before
+    if (wasFullscreen) {
+        try {
+            if (videoContainer.requestFullscreen) {
+                await videoContainer.requestFullscreen();
+            } else if (videoContainer.webkitRequestFullscreen) {
+                await videoContainer.webkitRequestFullscreen();
+            }
+        } catch (err) {
+            console.log('Could not restore fullscreen:', err);
+        }
+    }
 
     // Close sidebar on mobile
     document.getElementById('episodes-sidebar').classList.remove('open');
