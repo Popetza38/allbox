@@ -182,8 +182,10 @@ const WatchPage = {
     async switchEpisode(ep) {
         if (ep < 1 || ep > this.state.chapters.length) return;
 
-        // Save fullscreen state before switching
-        const wasFullscreen = document.fullscreenElement || document.webkitFullscreenElement || this.state.isFullscreen;
+        // Save fullscreen state before switching (including CSS fullscreen for iOS)
+        const wrapper = document.querySelector('.video-wrapper');
+        const isCSSFullscreen = wrapper?.classList.contains('css-fullscreen');
+        const wasFullscreen = document.fullscreenElement || document.webkitFullscreenElement || this.state.isFullscreen || isCSSFullscreen;
 
         // Show loading
         document.getElementById('videoLoading')?.classList.remove('hidden');
@@ -240,9 +242,19 @@ const WatchPage = {
         }
 
         const restoreFullscreenAfterLoad = () => {
+            // For iOS CSS fullscreen - ensure video style is applied
+            const wrapper = document.querySelector('.video-wrapper');
+            if (isIOS && wrapper?.classList.contains('css-fullscreen')) {
+                // Force video to fill screen
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.maxWidth = '100vw';
+                video.style.maxHeight = '100vh';
+                video.style.objectFit = 'contain';
+            }
+
             if (restoreFullscreen && !isIOS) {
                 // Desktop/Android: Re-enter native fullscreen after video loads
-                // iOS uses CSS fullscreen which persists automatically
                 setTimeout(() => {
                     if (container.requestFullscreen) {
                         container.requestFullscreen().catch(() => { });
