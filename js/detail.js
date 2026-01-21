@@ -1,333 +1,181 @@
-// ========================================
-// Detail Page Script
-// ========================================
+/**
+ * DramaPop Detail Page JavaScript
+ */
 
-let seriesData = null;
-let chaptersData = [];
-let isReversed = false;
+const DetailPage = {
+    state: {
+        bookId: null,
+        dramaData: null,
+        chapters: []
+    },
 
-// Initialize
-document.addEventListener('DOMContentLoaded', async () => {
-    const bookId = Utils.getUrlParam('id');
-    if (!bookId) {
-        Utils.toast('ไม่พบข้อมูลซีรี่ย์', 'error');
-        setTimeout(() => Utils.navigate('index.html'), 1500);
-        return;
-    }
+    async init() {
+        Common.init();
+        this.state.bookId = Common.getUrlParam('id');
 
-    try {
-        await loadSeriesDetail(bookId);
-    } catch (error) {
-        console.error('Failed to load series detail:', error);
-        Utils.toast('ไม่สามารถโหลดข้อมูลได้', 'error');
-    } finally {
-        hideLoadingScreen();
-    }
-
-    setupEventListeners();
-});
-
-function hideLoadingScreen() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) {
-        setTimeout(() => loadingScreen.classList.add('hidden'), 300);
-    }
-}
-
-async function loadSeriesDetail(bookId) {
-    // Load chapters first
-    const chaptersResult = await API.getChapters(bookId);
-
-    if (chaptersResult?.success && chaptersResult.data) {
-        chaptersData = chaptersResult.data;
-        renderEpisodes(chaptersData);
-    }
-
-    // Try to find series info from recommend and home endpoints
-    // since /api/detail/:id/v2 doesn't return metadata
-    try {
-        // Try recommend first (uses bookId)
-        const recommendResult = await API.getRecommend();
-        let foundInRecommend = null;
-
-        if (recommendResult?.success && recommendResult.data) {
-            foundInRecommend = recommendResult.data.find(s => s.bookId === bookId);
-            if (foundInRecommend) {
-                seriesData = foundInRecommend;
-                renderSeriesInfo(seriesData);
-                renderRelated(recommendResult.data);
-            }
+        if (!this.state.bookId) {
+            Common.showError('ไม่พบข้อมูลซีรี่ย์');
+            return;
         }
 
-        // If not found in recommend, try home
-        if (!foundInRecommend) {
-            const homeResult = await API.getHome();
-            if (homeResult?.success && homeResult.data && Array.isArray(homeResult.data)) {
-                // Home API returns array of series directly with 'id' property (not 'bookId')
-                const found = homeResult.data.find(s => s.id === bookId || s.bookId === bookId);
+        this.bindEvents();
+        await this.loadDetail();
+    },
 
-                if (found) {
-                    // Normalize the data structure
-                    seriesData = {
-                        bookId: found.id || found.bookId,
-                        bookName: found.name || found.bookName,
-                        coverWap: found.cover || found.coverWap,
-                        introduction: found.introduction || found.intro,
-                        chapterCount: found.chapterCount,
-                        playCount: found.playCount,
-                        tags: found.tags,
-                        tagV3s: found.tagV3s || found.tags
-                    };
-                    renderSeriesInfo(seriesData);
-                } else {
-                    // Use fallback with chapters count
-                    seriesData = {
-                        bookId,
-                        bookName: 'ซีรี่ย์',
-                        chapterCount: chaptersData?.length || 0
-                    };
-                    renderSeriesInfo(seriesData);
-                }
-            }
-
-            // Still render related from recommend if available
-            if (recommendResult?.success && recommendResult.data) {
-                renderRelated(recommendResult.data);
-            }
-        }
-    } catch (e) {
-        console.log('Could not load series info:', e);
-        // Fallback to basic info
-        seriesData = {
-            bookId,
-            bookName: 'ซีรี่ย์',
-            chapterCount: chaptersData?.length || 0
-        };
-        renderSeriesInfo(seriesData);
-    }
-
-    // Add to history
-    if (seriesData) {
-        Storage.history.add({
-            bookId,
-            name: seriesData.bookName || seriesData.name,
-            cover: seriesData.coverWap || seriesData.cover,
-            chapterCount: seriesData.chapterCount || chaptersData?.length || 0
+    bindEvents() {
+        document.getElementById('detailBackBtn')?.addEventListener('click', () => {
+            window.location.href = 'index.html';
         });
-    }
-}
+    },
 
-function renderSeriesInfo(data) {
-    const name = data.bookName || data.name || 'ไม่ทราบชื่อ';
-    const cover = data.coverWap || data.cover || '';
-    const intro = data.introduction || data.intro || 'ไม่มีข้อมูลเรื่องย่อ';
-    const tags = data.tags || data.tagV3s || [];
+    async loadDetail() {
+        Common.showLoading('กำลังโหลด...');
 
-    // Update page title
-    document.title = `${name} - DramaPop`;
-    document.getElementById('nav-title').textContent = name;
+        try {
+            const [detail, chapters] = await Promise.all([
+                API.getDramaDetail(this.state.bookId),
+                API.getChapters(this.state.bookId)
+            ]);
 
-    // Cover image
-    const coverImage = document.getElementById('cover-image');
-    coverImage.style.backgroundImage = `url('${cover}')`;
+            const dramaData = detail?.drama || detail?.data || detail || {};
+            this.state.dramaData = dramaData;
 
-    // Cover poster
-    const coverPoster = document.getElementById('cover-poster');
-    coverPoster.innerHTML = `<img src="${cover}" alt="${Utils.escapeHtml(name)}">`;
+            // Get cover
+            let cover = dramaData.cover || dramaData.poster || dramaData.image || '';
 
-    // Title
-    document.getElementById('series-title').textContent = name;
+            const bookName = dramaData.bookName || dramaData.name || dramaData.title || 'ไม่ทราบชื่อ';
+            const tags = dramaData.tags || dramaData.genres || [];
+            const chapterCount = dramaData.chapterCount || dramaData.episodeCount || 0;
+            const playCount = dramaData.playCount || dramaData.viewCount || '0';
+            const introduction = dramaData.introduction || dramaData.description || 'ไม่มีเรื่องย่อ';
 
-    // Meta info
-    const metaHtml = `
-        <span><i class="fas fa-play-circle"></i> ${data.chapterCount || 0} ตอน</span>
-        <span><i class="fas fa-eye"></i> ${data.playCount || '0'}</span>
-        ${data.year ? `<span><i class="fas fa-calendar"></i> ${data.year}</span>` : ''}
-        ${data.status ? `<span><i class="fas fa-broadcast-tower"></i> ${data.status}</span>` : ''}
-    `;
-    document.getElementById('series-meta').innerHTML = metaHtml;
+            // Handle chapters - use chapterCount to generate full episode list
+            // Get cover from dramaData.chapterList (has chapterImg)
+            let coverFromChapter = '';
+            if (dramaData.chapterList && dramaData.chapterList.length > 0) {
+                coverFromChapter = dramaData.chapterList[0]?.chapterImg || '';
+            }
 
-    // Tags
-    const tagsHtml = tags.slice(0, 5).map(tag => {
-        const tagName = typeof tag === 'string' ? tag : (tag.tagName || tag.name);
-        return `<span class="badge-tag">${tagName}</span>`;
-    }).join('');
-    document.getElementById('series-tags').innerHTML = tagsHtml;
+            // Generate full chapter list from chapterCount
+            let chapterList = [];
+            if (chapterCount > 0) {
+                // Create full episode list based on chapterCount
+                chapterList = Array.from({ length: chapterCount }, (_, i) => ({ chapterIndex: i }));
+            } else if (Array.isArray(chapters)) {
+                chapterList = chapters;
+            } else if (chapters?.chapterList) {
+                chapterList = chapters.chapterList;
+            } else if (chapters?.list) {
+                chapterList = chapters.list;
+            } else if (chapters?.chapters) {
+                chapterList = chapters.chapters;
+            } else if (chapters?.data) {
+                chapterList = chapters.data;
+            }
 
-    // Synopsis
-    document.getElementById('synopsis').textContent = intro;
+            this.state.chapters = chapterList;
 
-    // Update favorite button
-    updateFavoriteButton();
-}
+            // Fallback cover to first chapter image if main cover is missing
+            if (!cover) {
+                cover = coverFromChapter;
+            }
 
-function renderEpisodes(chapters) {
-    const grid = document.getElementById('episodes-grid');
-    const history = Storage.history.get();
-    const current = history.find(h => h.bookId === Utils.getUrlParam('id'));
+            // Check if already favorited
+            const isFav = Favorites.isFavorite(this.state.bookId);
 
-    const sortedChapters = isReversed ? [...chapters].reverse() : chapters;
+            // Render UI
+            document.getElementById('detailBackdrop').style.backgroundImage = cover ? `url(${cover})` : 'none';
 
-    grid.innerHTML = sortedChapters.map((chapter, index) => {
-        const epNum = isReversed ? chapters.length - index : index + 1;
-        const isCurrent = current?.lastChapterId === chapter.chapterId;
-        const progress = isCurrent ? (current.progressPercent || 0) : 0;
-
-        return `
-            <div class="episode-card ${isCurrent ? 'current' : ''}" 
-                 onclick="playEpisode('${chapter.chapterId}', ${epNum})"
-                 data-chapter-id="${chapter.chapterId}">
-                <span class="episode-number">${epNum}</span>
-                <span class="episode-title">ตอนที่ ${epNum}</span>
-                ${progress > 0 ? `
-                    <div class="episode-progress">
-                        <div class="episode-progress-bar" style="width: ${progress}%"></div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }).join('');
-}
-
-function renderRelated(dramas) {
-    const slider = document.getElementById('related-slider');
-    if (!slider || !dramas.length) return;
-
-    slider.innerHTML = dramas.slice(0, 10).map(drama => {
-        const id = drama.bookId || drama.id;
-        const name = drama.bookName || drama.name;
-        const cover = drama.coverWap || drama.cover;
-
-        if (id === Utils.getUrlParam('id')) return '';
-
-        return `
-            <a href="detail.html?id=${id}" class="series-card">
-                <div class="series-poster">
-                    <img src="${cover}" alt="${Utils.escapeHtml(name)}" loading="lazy">
-                    <div class="series-play-overlay">
-                        <div class="series-play-btn">
-                            <i class="fas fa-play"></i>
+            // Detail Card
+            document.getElementById('detailCard').innerHTML = `
+                <div class="detail-card">
+                    <div class="detail-poster">${cover ? `<img src="${cover}" alt="${bookName}" onerror="this.style.display='none'">` : '<div class="no-poster"><i class="fas fa-film"></i></div>'}</div>
+                    <div class="detail-info">
+                        <h1 class="detail-title">${bookName}</h1>
+                        <div class="detail-tags">${tags.map(t => `<span class="detail-tag">${t}</span>`).join('')}</div>
+                        <div class="detail-stats">
+                            <span class="detail-stat"><i class="fas fa-film"></i> ${chapterCount} ตอน</span>
+                            <span class="detail-stat"><i class="fas fa-eye"></i> ${playCount}</span>
                         </div>
+                        <p class="detail-desc">${introduction}</p>
                     </div>
                 </div>
-                <div class="series-info">
-                    <h3 class="series-title">${Utils.escapeHtml(name)}</h3>
-                </div>
-            </a>
-        `;
-    }).join('');
-}
+            `;
 
-function playEpisode(chapterId, epNum) {
-    const bookId = Utils.getUrlParam('id');
-    const name = seriesData?.bookName || seriesData?.name || '';
-    Utils.navigate('watch.html', { id: bookId, ep: chapterId, num: epNum, name: encodeURIComponent(name) });
-}
+            // Action Buttons
+            document.getElementById('detailActions').innerHTML = `
+                <button class="detail-watch-btn" id="watchNowBtn">
+                    <i class="fas fa-play"></i> ดูเลย
+                </button>
+                <button class="detail-fav-btn ${isFav ? 'active' : ''}" id="favBtn">
+                    <i class="fas fa-heart"></i>
+                </button>
+            `;
 
-function updateFavoriteButton() {
-    const bookId = Utils.getUrlParam('id');
-    const isFavorite = Storage.favorites.isFavorite(bookId);
+            // Episodes Count
+            document.getElementById('episodesCount').textContent = `${chapterCount} ตอน`;
 
-    const btnFavorite = document.getElementById('btn-favorite');
-    const btnAddFavorite = document.getElementById('btn-add-favorite');
+            // Render episodes
+            const episodesGrid = document.getElementById('episodesGrid');
+            if (this.state.chapters.length > 0) {
+                // Check for watch history to highlight last watched
+                const history = WatchHistory.get(this.state.bookId);
+                const lastEpisode = history?.lastEpisode || 0;
 
-    if (btnFavorite) {
-        btnFavorite.innerHTML = `<i class="${isFavorite ? 'fas' : 'far'} fa-heart" style="color: ${isFavorite ? '#ec4899' : 'inherit'}"></i>`;
-    }
-
-    if (btnAddFavorite) {
-        btnAddFavorite.classList.toggle('active', isFavorite);
-        btnAddFavorite.innerHTML = `
-            <i class="${isFavorite ? 'fas' : 'far'} fa-heart"></i>
-            <span>${isFavorite ? 'ชื่นชอบแล้ว' : 'ชื่นชอบ'}</span>
-        `;
-    }
-}
-
-function toggleFavorite() {
-    const bookId = Utils.getUrlParam('id');
-    if (!seriesData) return;
-
-    const isFav = Storage.favorites.toggle({
-        bookId,
-        name: seriesData.bookName || seriesData.name,
-        cover: seriesData.coverWap || seriesData.cover,
-        chapterCount: seriesData.chapterCount
-    });
-
-    updateFavoriteButton();
-    Utils.toast(isFav ? 'เพิ่มในรายการโปรดแล้ว' : 'ลบออกจากรายการโปรดแล้ว', 'success');
-}
-
-function shareSeries() {
-    const name = seriesData?.bookName || seriesData?.name || 'ซีรี่ย์';
-    const url = window.location.href;
-
-    if (navigator.share) {
-        navigator.share({
-            title: name,
-            text: `ดู ${name} บน DramaPop`,
-            url: url
-        });
-    } else {
-        navigator.clipboard.writeText(url);
-        Utils.toast('คัดลอกลิงก์แล้ว', 'success');
-    }
-}
-
-function setupEventListeners() {
-    // Play button
-    document.getElementById('btn-play')?.addEventListener('click', () => {
-        if (chaptersData.length > 0) {
-            const history = Storage.history.get();
-            const current = history.find(h => h.bookId === Utils.getUrlParam('id'));
-
-            if (current?.lastChapterId) {
-                // Continue from last watched
-                const epIndex = chaptersData.findIndex(c => c.chapterId === current.lastChapterId);
-                playEpisode(current.lastChapterId, epIndex + 1);
+                episodesGrid.innerHTML = this.state.chapters.map((ch, i) => {
+                    const epNum = (ch.chapterIndex !== undefined ? ch.chapterIndex : i) + 1;
+                    const isLastWatched = epNum === lastEpisode;
+                    return `<button class="episode-btn ${isLastWatched ? 'watched' : ''}" data-index="${epNum}">
+                        ${isLastWatched ? '<i class="fas fa-play-circle"></i> ' : ''}ตอนที่ ${epNum}
+                    </button>`;
+                }).join('');
             } else {
-                // Play first episode
-                playEpisode(chaptersData[0].chapterId, 1);
+                episodesGrid.innerHTML = '<p class="no-episodes">ไม่พบรายการตอน</p>';
             }
+
+            // Bind events
+            document.getElementById('watchNowBtn')?.addEventListener('click', () => {
+                const history = WatchHistory.get(this.state.bookId);
+                const ep = history?.lastEpisode || 1;
+                window.location.href = `watch.html?id=${this.state.bookId}&ep=${ep}`;
+            });
+
+            // Favorite button
+            document.getElementById('favBtn')?.addEventListener('click', () => {
+                const added = Favorites.toggle({
+                    bookId: this.state.bookId,
+                    bookName: bookName,
+                    cover: cover,
+                    chapterCount: chapterCount
+                });
+
+                const btn = document.getElementById('favBtn');
+                btn.classList.toggle('active', added);
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top',
+                    icon: added ? 'success' : 'info',
+                    title: added ? 'เพิ่มในรายการโปรดแล้ว' : 'ลบออกจากรายการโปรดแล้ว',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    background: '#1a1a1a',
+                    color: '#fff'
+                });
+            });
+
+            document.querySelectorAll('.episode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    window.location.href = `watch.html?id=${this.state.bookId}&ep=${btn.dataset.index}`;
+                });
+            });
+
+            Common.closeLoading();
+        } catch (error) {
+            console.error('Detail error:', error);
+            Common.showError('ไม่สามารถโหลดข้อมูลซีรี่ย์ได้');
         }
-    });
+    }
+};
 
-    // Favorite buttons
-    document.getElementById('btn-favorite')?.addEventListener('click', toggleFavorite);
-    document.getElementById('btn-add-favorite')?.addEventListener('click', toggleFavorite);
-
-    // Share buttons
-    document.getElementById('btn-share')?.addEventListener('click', shareSeries);
-    document.getElementById('btn-share-action')?.addEventListener('click', shareSeries);
-
-    // Expand synopsis
-    const btnExpand = document.getElementById('btn-expand-synopsis');
-    const synopsis = document.getElementById('synopsis');
-
-    btnExpand?.addEventListener('click', () => {
-        synopsis.classList.toggle('expanded');
-        btnExpand.classList.toggle('expanded');
-        btnExpand.innerHTML = synopsis.classList.contains('expanded')
-            ? 'ย่อ <i class="fas fa-chevron-up"></i>'
-            : 'อ่านเพิ่มเติม <i class="fas fa-chevron-down"></i>';
-    });
-
-    // Sort episodes
-    document.getElementById('btn-sort')?.addEventListener('click', () => {
-        isReversed = !isReversed;
-        document.getElementById('btn-sort').classList.toggle('reversed', isReversed);
-        renderEpisodes(chaptersData);
-    });
-
-    // Scroll effect for nav
-    const detailNav = document.querySelector('.detail-nav');
-    window.addEventListener('scroll', Utils.throttle(() => {
-        detailNav.classList.toggle('scrolled', window.scrollY > 100);
-    }, 100));
-
-    // Download button
-    document.getElementById('btn-download')?.addEventListener('click', () => {
-        Utils.toast('ฟีเจอร์นี้ยังไม่พร้อมใช้งาน', 'info');
-    });
-}
+document.addEventListener('DOMContentLoaded', () => DetailPage.init());

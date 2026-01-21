@@ -1,422 +1,258 @@
-// ========================================
-// Home Page Script
-// ========================================
+/**
+ * DramaPop Home Page JavaScript
+ */
 
-// State
-let heroSlides = [];
-let currentHeroIndex = 0;
-let heroInterval = null;
+const HomePage = {
+    state: {
+        allDramas: [],
+        sliderStates: {}
+    },
 
-// Initialize
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        await initHomePage();
-    } catch (error) {
-        console.error('Failed to initialize home page:', error);
-        Utils.toast('ไม่สามารถโหลดข้อมูลได้', 'error');
-    } finally {
-        hideLoadingScreen();
-    }
-});
+    async init() {
+        Common.init();
+        await this.loadContent();
+    },
 
-// Hide loading screen
-function hideLoadingScreen() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) {
-        setTimeout(() => {
-            loadingScreen.classList.add('hidden');
-        }, 500);
-    }
-}
+    async loadContent() {
+        try {
+            Common.showLoading('กำลังโหลดข้อมูล...');
 
-// Initialize home page
-async function initHomePage() {
-    // Show skeleton loaders
-    showSkeletons();
+            const results = await Promise.allSettled([
+                API.getForYou(1), API.getForYou(2), API.getForYou(3), API.getForYou(4), API.getForYou(5),
+                API.getNew(1), API.getNew(2), API.getNew(3), API.getNew(4), API.getNew(5),
+                API.getRanking(1), API.getRanking(2), API.getRanking(3), API.getRanking(4), API.getRanking(5)
+            ]);
 
-    // Load data in parallel - fetch 6 pages for more content
-    const [homeData1, homeData2, homeData3, homeData4, homeData5, homeData6, recommendData] = await Promise.all([
-        API.getHome(1),
-        API.getHome(2),
-        API.getHome(3),
-        API.getHome(4),
-        API.getHome(5),
-        API.getHome(6),
-        API.getRecommend()
-    ]);
+            const getData = (result) => result.status === 'fulfilled' ? result.value : null;
 
-    // Combine all home data
-    let allDramas = [];
-    if (homeData1?.success) allDramas = allDramas.concat(homeData1.data || []);
-    if (homeData2?.success) allDramas = allDramas.concat(homeData2.data || []);
-    if (homeData3?.success) allDramas = allDramas.concat(homeData3.data || []);
-    if (homeData4?.success) allDramas = allDramas.concat(homeData4.data || []);
-    if (homeData5?.success) allDramas = allDramas.concat(homeData5.data || []);
-    if (homeData6?.success) allDramas = allDramas.concat(homeData6.data || []);
+            const forYouList = [
+                ...(getData(results[0])?.list || []),
+                ...(getData(results[1])?.list || []),
+                ...(getData(results[2])?.list || []),
+                ...(getData(results[3])?.list || []),
+                ...(getData(results[4])?.list || [])
+            ];
 
-    // Process home data
-    if (allDramas.length > 0) {
-        // Setup hero with first 5 dramas
-        setupHero(allDramas.slice(0, 5));
+            const newList = [
+                ...(getData(results[5])?.list || []),
+                ...(getData(results[6])?.list || []),
+                ...(getData(results[7])?.list || []),
+                ...(getData(results[8])?.list || []),
+                ...(getData(results[9])?.list || [])
+            ];
 
-        // Filter dramas for different categories
-        const dubbed = allDramas.filter(d => d.name?.includes('พากย์ไทย'));
-        const sub = allDramas.filter(d => !d.name?.includes('พากย์ไทย'));
-        const popular = allDramas.filter(d => d.cornerName?.includes('มาแรง'));
+            const rankingList = [
+                ...(getData(results[10])?.list || []),
+                ...(getData(results[11])?.list || []),
+                ...(getData(results[12])?.list || []),
+                ...(getData(results[13])?.list || []),
+                ...(getData(results[14])?.list || [])
+            ];
 
-        // Render categories with more items
-        renderSeriesSlider('dubbed-slider', dubbed.length ? dubbed : allDramas.slice(0, 15));
-        renderSeriesSlider('sub-slider', sub.length ? sub : allDramas.slice(5, 20));
-        renderSeriesSlider('new-slider', allDramas);
-        renderSeriesSlider('popular-slider', popular.length ? popular : allDramas);
-    }
+            // Remove duplicates
+            const uniqueDramas = [];
+            const seenIds = new Set();
+            [...forYouList, ...newList, ...rankingList].forEach(d => {
+                if (d && d.bookId && !seenIds.has(d.bookId)) {
+                    seenIds.add(d.bookId);
+                    uniqueDramas.push(d);
+                }
+            });
+            this.state.allDramas = uniqueDramas;
 
-    // Render recommendations
-    if (recommendData?.success && recommendData.data) {
-        renderSeriesSlider('recommend-slider', recommendData.data.map(normalizeRecommendData));
-    }
+            // Render main sections
+            this.renderDramaGrid('forYouGrid', forYouList.slice(0, 30));
+            this.renderDramaGrid('newDramasGrid', newList.slice(0, 30));
+            this.renderDramaGrid('rankingGrid', rankingList.slice(0, 30));
+            this.renderDramaGrid('classifyGrid', rankingList.slice(0, 20));
 
-    // Setup event listeners
-    setupEventListeners();
-}
+            // Category filtering
+            const matchesCategory = (drama, keywords) => {
+                if (!drama) return false;
+                const tags = drama.tags || [];
+                const name = (drama.bookName || '').toLowerCase();
+                const intro = (drama.introduction || '').toLowerCase();
+                return keywords.some(kw => {
+                    const keyword = kw.toLowerCase();
+                    if (tags.some(t => t && t.toLowerCase().includes(keyword))) return true;
+                    if (name.includes(keyword)) return true;
+                    if (intro.includes(keyword)) return true;
+                    return false;
+                });
+            };
 
-// Normalize recommendation data to match home data format
-function normalizeRecommendData(item) {
-    return {
-        id: item.bookId,
-        name: item.bookName,
-        cover: item.coverWap,
-        chapterCount: item.chapterCount,
-        introduction: item.introduction,
-        playCount: item.playCount,
-        cornerName: item.corner?.name,
-        cornerColor: item.corner?.color,
-        tags: item.tags || item.tagV3s?.map(t => ({ tagName: t.tagName }))
-    };
-}
+            const romanceKeywords = ['โรแมนติก', 'รัก', 'หวาน', 'แต่งงาน', 'คู่รัก', 'พรหมลิขิต', 'หัวใจ', 'รักแรก', 'จีบ', 'แฟน', 'ความรัก', 'romance', 'love'];
+            const ceoKeywords = ['ประธาน', 'CEO', 'เจ้าพ่อ', 'มหาเศรษฐี', 'ตระกูล', 'รวย', 'บริษัท', 'เศรษฐี', 'ผู้บริหาร', 'boss', 'rich'];
+            const fantasyKeywords = ['แฟนตาซี', 'เหนือธรรมชาติ', 'วิญญาณ', 'เกิดใหม่', 'ระบบ', 'พลัง', 'เวทมนตร์', 'fantasy', 'ปีศาจ', 'นรก', 'สวรรค์', 'อมตะ'];
+            const periodKeywords = ['พีเรียด', 'ย้อนยุค', 'ข้ามเวลา', 'ราชวงศ์', 'โบราณ', 'ฮองเฮา', 'จักรพรรดิ', 'องค์ชาย', 'องค์หญิง', 'วังหลวง', 'period', 'historical'];
+            const revengeKeywords = ['แก้แค้น', 'ล้างแค้น', 'ตบหน้า', 'หักหลัง', 'ทวงคืน', 'revenge', 'ปกป้อง', 'สู้', 'แก้เผ็ด', 'หักมุม'];
 
-// Show skeleton loaders
-function showSkeletons() {
-    const sliders = ['dubbed-slider', 'sub-slider', 'new-slider', 'popular-slider', 'recommend-slider'];
-    sliders.forEach(sliderId => {
-        const slider = document.getElementById(sliderId);
-        if (slider) {
-            slider.innerHTML = Array(6).fill(0).map(() => `
-                <div class="series-card skeleton">
-                    <div class="series-poster"></div>
-                    <div class="series-info">
-                        <div class="series-title">&nbsp;</div>
-                        <div class="series-views">&nbsp;</div>
-                    </div>
-                </div>
-            `).join('');
+            const romance = uniqueDramas.filter(d => matchesCategory(d, romanceKeywords));
+            const ceo = uniqueDramas.filter(d => matchesCategory(d, ceoKeywords));
+            const fantasy = uniqueDramas.filter(d => matchesCategory(d, fantasyKeywords));
+            const period = uniqueDramas.filter(d => matchesCategory(d, periodKeywords));
+            const revenge = uniqueDramas.filter(d => matchesCategory(d, revengeKeywords));
+
+            this.renderDramaGrid('romanceGrid', romance.slice(0, 30));
+            this.renderDramaGrid('ceoGrid', ceo.slice(0, 30));
+            this.renderDramaGrid('fantasyGrid', fantasy.slice(0, 30));
+            this.renderDramaGrid('periodGrid', period.slice(0, 30));
+            this.renderDramaGrid('revengeGrid', revenge.slice(0, 30));
+
+            // Set hero background
+            if (forYouList[0]?.cover) {
+                document.getElementById('heroSlider').style.backgroundImage = `url(${forYouList[0].cover})`;
+            }
+
+            // Initialize sliders
+            this.initAllSliders({
+                forYou: forYouList.length,
+                newDramas: newList.length,
+                ranking: rankingList.length,
+                classify: Math.min(rankingList.length, 10),
+                romance: romance.length,
+                ceo: ceo.length,
+                fantasy: fantasy.length,
+                period: period.length,
+                revenge: revenge.length
+            });
+
+            Common.closeLoading();
+        } catch (error) {
+            console.error('Load error:', error);
+            Common.showError('ไม่สามารถโหลดข้อมูลได้');
         }
-    });
-}
+    },
 
-// Setup hero section
-function setupHero(dramas) {
-    heroSlides = dramas;
-    const heroSlider = document.getElementById('hero-slider');
-    const heroIndicators = document.getElementById('hero-indicators');
+    renderDramaGrid(containerId, dramas) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
 
-    if (!heroSlider || !dramas.length) return;
+        if (!dramas || dramas.length === 0) {
+            container.innerHTML = '<p style="color:#808080; padding:20px;">ไม่มีข้อมูล</p>';
+            return;
+        }
 
-    // Render hero slides
-    heroSlider.innerHTML = dramas.map((drama, index) => `
-        <div class="hero-slide" style="background-image: url('${drama.cover}')" data-index="${index}">
-            <div class="hero-content">
-                <span class="hero-badge ${drama.cornerName?.includes('มาแรง') ? 'hot' : ''}">
-                    <i class="fas ${drama.cornerName?.includes('มาแรง') ? 'fa-fire' : 'fa-star'}"></i>
-                    ${drama.cornerName || 'แนะนำ'}
-                </span>
-                <h1 class="hero-title">${Utils.escapeHtml(drama.name)}</h1>
-                <div class="hero-meta">
-                    <span><i class="fas fa-play-circle"></i> ${drama.chapterCount || 0} ตอน</span>
-                    <span><i class="fas fa-eye"></i> ${drama.playCount || '0'}</span>
-                </div>
-                <p class="hero-description">${Utils.escapeHtml(drama.introduction || '')}</p>
-                <div class="hero-actions">
-                    <a href="detail.html?id=${drama.id}" class="hero-btn primary">
-                        <i class="fas fa-play"></i> ดูเลย
-                    </a>
-                    <button class="hero-btn secondary" onclick="toggleFavorite('${drama.id}', '${Utils.escapeHtml(drama.name)}', '${drama.cover}')">
-                        <i class="fas ${Storage.favorites.isFavorite(drama.id) ? 'fa-heart' : 'fa-heart'}"></i>
-                        ${Storage.favorites.isFavorite(drama.id) ? 'บันทึกแล้ว' : 'บันทึก'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    `).join('');
+        container.innerHTML = dramas.map(d => Common.renderDramaCard(d)).join('');
+        Common.bindDramaCardEvents(container);
+    },
 
-    // Render indicators
-    heroIndicators.innerHTML = dramas.map((_, index) => `
-        <div class="hero-indicator ${index === 0 ? 'active' : ''}" data-index="${index}"></div>
-    `).join('');
+    initSlider(sliderName, gridId, totalItems) {
+        const sliderContainer = document.querySelector(`[data-slider="${sliderName}"]`);
+        const grid = document.getElementById(gridId);
+        const pagination = document.querySelector(`[data-for="${sliderName}"]`);
 
-    // Add click events to indicators
-    heroIndicators.querySelectorAll('.hero-indicator').forEach(indicator => {
-        indicator.addEventListener('click', () => {
-            goToHeroSlide(parseInt(indicator.dataset.index));
-        });
-    });
+        if (!sliderContainer || !grid) return;
 
-    // Start auto-slide
-    startHeroAutoSlide();
+        const prevBtn = sliderContainer.querySelector('.slider-nav.prev');
+        const nextBtn = sliderContainer.querySelector('.slider-nav.next');
 
-    // Add touch/swipe support
-    setupHeroSwipe(heroSlider);
-}
+        if (!prevBtn || !nextBtn) return;
 
-// Go to specific hero slide
-function goToHeroSlide(index) {
-    const heroSlider = document.getElementById('hero-slider');
-    const indicators = document.querySelectorAll('.hero-indicator');
+        this.state.sliderStates[sliderName] = {
+            currentIndex: 0,
+            itemsPerView: 6,
+            autoScrollInterval: null
+        };
 
-    currentHeroIndex = index;
-    heroSlider.style.transform = `translateX(-${index * 100}%)`;
+        const state = this.state.sliderStates[sliderName];
 
-    indicators.forEach((ind, i) => {
-        ind.classList.toggle('active', i === index);
-    });
-}
+        const updateItemsPerView = () => {
+            const width = window.innerWidth;
+            if (width <= 480) state.itemsPerView = 3;
+            else if (width <= 768) state.itemsPerView = 4;
+            else if (width <= 1024) state.itemsPerView = 5;
+            else state.itemsPerView = 6;
+        };
 
-// Start hero auto-slide
-function startHeroAutoSlide() {
-    stopHeroAutoSlide();
-    heroInterval = setInterval(() => {
-        currentHeroIndex = (currentHeroIndex + 1) % heroSlides.length;
-        goToHeroSlide(currentHeroIndex);
-    }, 5000);
-}
+        updateItemsPerView();
 
-// Stop hero auto-slide
-function stopHeroAutoSlide() {
-    if (heroInterval) {
-        clearInterval(heroInterval);
-        heroInterval = null;
-    }
-}
+        const itemsToShow = Math.min(totalItems, 15);
+        const totalPages = Math.ceil(itemsToShow / state.itemsPerView);
 
-// Setup hero swipe
-function setupHeroSwipe(element) {
-    let startX = 0;
-    let isDragging = false;
-
-    element.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        isDragging = true;
-        stopHeroAutoSlide();
-    }, { passive: true });
-
-    element.addEventListener('touchend', (e) => {
-        if (!isDragging) return;
-        const endX = e.changedTouches[0].clientX;
-        const diff = startX - endX;
-
-        if (Math.abs(diff) > 50) {
-            if (diff > 0 && currentHeroIndex < heroSlides.length - 1) {
-                goToHeroSlide(currentHeroIndex + 1);
-            } else if (diff < 0 && currentHeroIndex > 0) {
-                goToHeroSlide(currentHeroIndex - 1);
+        if (pagination && totalPages > 1) {
+            pagination.innerHTML = '';
+            for (let i = 0; i < totalPages; i++) {
+                const dot = document.createElement('span');
+                dot.className = `slider-dot ${i === 0 ? 'active' : ''}`;
+                dot.dataset.index = i;
+                dot.addEventListener('click', () => scrollTo(i));
+                pagination.appendChild(dot);
             }
         }
 
-        isDragging = false;
-        startHeroAutoSlide();
-    }, { passive: true });
-}
+        const scrollTo = (index) => {
+            const cards = grid.querySelectorAll('.drama-card');
+            if (cards.length === 0) return;
 
-// Render series slider
-function renderSeriesSlider(sliderId, dramas) {
-    const slider = document.getElementById(sliderId);
-    if (!slider || !dramas.length) return;
+            const cardWidth = cards[0].offsetWidth + 10;
+            const scrollPosition = index * state.itemsPerView * cardWidth;
+            grid.scrollTo({ left: scrollPosition, behavior: 'smooth' });
 
-    slider.innerHTML = dramas.map(drama => createSeriesCard(drama)).join('');
-}
+            state.currentIndex = index;
 
-// Create series card HTML
-function createSeriesCard(drama) {
-    const id = drama.id || drama.bookId;
-    const name = drama.name || drama.bookName;
-    const cover = drama.cover || drama.coverWap;
-    const cornerClass = Utils.getCornerClass(drama.cornerName || drama.corner?.name);
-    const cornerName = drama.cornerName || drama.corner?.name;
-
-    return `
-        <a href="detail.html?id=${id}" class="series-card">
-            <div class="series-poster">
-                <img src="${cover}" alt="${Utils.escapeHtml(name)}" loading="lazy">
-                ${cornerName ? `<span class="series-corner ${cornerClass}">${cornerName}</span>` : ''}
-                <div class="series-play-overlay">
-                    <div class="series-play-btn">
-                        <i class="fas fa-play"></i>
-                    </div>
-                </div>
-                <span class="series-episodes">${drama.chapterCount || 0} ตอน</span>
-            </div>
-            <div class="series-info">
-                <h3 class="series-title">${Utils.escapeHtml(name)}</h3>
-                <p class="series-views"><i class="fas fa-eye"></i> ${drama.playCount || '0'}</p>
-            </div>
-        </a>
-    `;
-}
-
-// Toggle favorite
-function toggleFavorite(bookId, name, cover) {
-    const isFav = Storage.favorites.toggle({
-        bookId,
-        name,
-        cover
-    });
-
-    Utils.toast(isFav ? 'เพิ่มในรายการโปรดแล้ว' : 'ลบออกจากรายการโปรดแล้ว', 'success');
-
-    // Refresh hero to update button
-    if (heroSlides.length) {
-        setupHero(heroSlides);
-        goToHeroSlide(currentHeroIndex);
-    }
-}
-
-// Setup event listeners
-function setupEventListeners() {
-    // Search input
-    const searchInput = document.getElementById('search-input');
-    const searchModal = document.getElementById('search-modal');
-    const modalSearchInput = document.getElementById('modal-search-input');
-    const closeSearch = document.getElementById('close-search');
-    const clearSearch = document.getElementById('clear-search');
-    const searchResults = document.getElementById('search-results');
-
-    // Open search modal on mobile
-    if (searchInput) {
-        searchInput.addEventListener('focus', () => {
-            if (Utils.isMobile()) {
-                searchModal.classList.add('active');
-                modalSearchInput.focus();
+            if (pagination) {
+                pagination.querySelectorAll('.slider-dot').forEach((dot, i) => {
+                    dot.classList.toggle('active', i === index);
+                });
             }
+
+            prevBtn.disabled = index === 0;
+            nextBtn.disabled = index >= totalPages - 1;
+        };
+
+        prevBtn.addEventListener('click', () => {
+            if (state.currentIndex > 0) scrollTo(state.currentIndex - 1);
         });
 
-        // Desktop search
-        searchInput.addEventListener('input', Utils.debounce(async (e) => {
-            if (!Utils.isMobile() && e.target.value.length >= 2) {
-                await performSearch(e.target.value);
-            }
-        }, 500));
-    }
-
-    // Modal search input
-    if (modalSearchInput) {
-        modalSearchInput.addEventListener('input', Utils.debounce(async (e) => {
-            const query = e.target.value.trim();
-            clearSearch.classList.toggle('visible', query.length > 0);
-
-            if (query.length >= 2) {
-                await performSearch(query, searchResults);
-            } else {
-                searchResults.innerHTML = `
-                    <div class="search-placeholder">
-                        <i class="fas fa-search"></i>
-                        <p>ค้นหาซีรี่ย์ที่คุณต้องการดู</p>
-                    </div>
-                `;
-            }
-        }, 500));
-    }
-
-    // Close search
-    if (closeSearch) {
-        closeSearch.addEventListener('click', () => {
-            searchModal.classList.remove('active');
-            modalSearchInput.value = '';
-            clearSearch.classList.remove('visible');
+        nextBtn.addEventListener('click', () => {
+            if (state.currentIndex < totalPages - 1) scrollTo(state.currentIndex + 1);
         });
-    }
 
-    // Clear search
-    if (clearSearch) {
-        clearSearch.addEventListener('click', () => {
-            modalSearchInput.value = '';
-            modalSearchInput.focus();
-            clearSearch.classList.remove('visible');
-            searchResults.innerHTML = `
-                <div class="search-placeholder">
-                    <i class="fas fa-search"></i>
-                    <p>ค้นหาซีรี่ย์ที่คุณต้องการดู</p>
-                </div>
-            `;
-        });
-    }
+        if (sliderName === 'forYou') {
+            const startAutoScroll = () => {
+                state.autoScrollInterval = setInterval(() => {
+                    let nextIndex = state.currentIndex + 1;
+                    if (nextIndex >= totalPages) nextIndex = 0;
+                    scrollTo(nextIndex);
+                }, 5000);
+            };
 
-    // Hide header on scroll down (mobile)
-    let lastScrollY = 0;
-    const topNav = document.querySelector('.top-nav');
+            const stopAutoScroll = () => {
+                if (state.autoScrollInterval) clearInterval(state.autoScrollInterval);
+            };
 
-    window.addEventListener('scroll', Utils.throttle(() => {
-        const currentScrollY = window.scrollY;
-
-        if (currentScrollY > lastScrollY && currentScrollY > 100) {
-            topNav.classList.add('hidden');
-        } else {
-            topNav.classList.remove('hidden');
+            sliderContainer.addEventListener('mouseenter', stopAutoScroll);
+            sliderContainer.addEventListener('mouseleave', startAutoScroll);
+            startAutoScroll();
         }
 
-        lastScrollY = currentScrollY;
-    }, 100));
-}
+        prevBtn.disabled = true;
+        nextBtn.disabled = totalPages <= 1;
+    },
 
-// Perform search
-async function performSearch(query, resultsContainer = null) {
-    const container = resultsContainer || document.getElementById('search-results');
+    initAllSliders(counts) {
+        this.initSlider('forYou', 'forYouGrid', counts.forYou || 15);
+        this.initSlider('newDramas', 'newDramasGrid', counts.newDramas || 15);
+        this.initSlider('ranking', 'rankingGrid', counts.ranking || 15);
+        this.initSlider('classify', 'classifyGrid', counts.classify || 10);
+        this.initSlider('romance', 'romanceGrid', counts.romance || 15);
+        this.initSlider('ceo', 'ceoGrid', counts.ceo || 15);
+        this.initSlider('fantasy', 'fantasyGrid', counts.fantasy || 15);
+        this.initSlider('period', 'periodGrid', counts.period || 15);
+        this.initSlider('revenge', 'revengeGrid', counts.revenge || 15);
 
-    try {
-        container.innerHTML = `
-            <div class="search-placeholder">
-                <div class="loader" style="width: 40px; height: 40px;">
-                    <div class="loader-ring"></div>
-                </div>
-                <p>กำลังค้นหา...</p>
-            </div>
-        `;
-
-        const result = await API.search(query);
-
-        if (result?.success && result.data?.length) {
-            container.innerHTML = `
-                <div class="search-results-list">
-                    ${result.data.map(drama => `
-                        <a href="detail.html?id=${drama.bookId || drama.id}" class="search-result-item">
-                            <div class="search-result-poster">
-                                <img src="${drama.coverWap || drama.cover}" alt="${Utils.escapeHtml(drama.bookName || drama.name)}">
-                            </div>
-                            <div class="search-result-info">
-                                <h4 class="search-result-title">${Utils.escapeHtml(drama.bookName || drama.name)}</h4>
-                                <p class="search-result-meta">${drama.chapterCount || 0} ตอน • ${drama.playCount || '0'} views</p>
-                            </div>
-                        </a>
-                    `).join('')}
-                </div>
-            `;
-        } else {
-            container.innerHTML = `
-                <div class="no-results">
-                    <i class="fas fa-search"></i>
-                    <p>ไม่พบผลลัพธ์สำหรับ "${Utils.escapeHtml(query)}"</p>
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.error('Search error:', error);
-        container.innerHTML = `
-            <div class="no-results">
-                <i class="fas fa-exclamation-circle"></i>
-                <p>เกิดข้อผิดพลาดในการค้นหา</p>
-            </div>
-        `;
+        window.addEventListener('resize', () => {
+            Object.keys(this.state.sliderStates).forEach(name => {
+                const state = this.state.sliderStates[name];
+                const width = window.innerWidth;
+                if (width <= 480) state.itemsPerView = 3;
+                else if (width <= 768) state.itemsPerView = 4;
+                else if (width <= 1024) state.itemsPerView = 5;
+                else state.itemsPerView = 6;
+            });
+        });
     }
-}
+};
 
-// Make functions globally available
-window.toggleFavorite = toggleFavorite;
+document.addEventListener('DOMContentLoaded', () => HomePage.init());
