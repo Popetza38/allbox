@@ -294,10 +294,24 @@ const WatchPage = {
 
         fullscreen?.addEventListener('click', () => {
             const container = document.getElementById('videoContainer');
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
+
+            // iOS Safari uses webkitEnterFullscreen on video element directly
+            if (video.webkitEnterFullscreen) {
+                video.webkitEnterFullscreen();
+            } else if (document.fullscreenElement || document.webkitFullscreenElement) {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
             } else {
-                container.requestFullscreen();
+                // Enter fullscreen (standard or webkit prefix)
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                } else if (container.webkitRequestFullscreen) {
+                    container.webkitRequestFullscreen();
+                }
             }
         });
 
