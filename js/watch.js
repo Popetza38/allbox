@@ -135,8 +135,11 @@ const WatchPage = {
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-        // iOS: Don't enable native controls - use CSS fullscreen instead
-        // Native iOS fullscreen causes video to shrink when changing episodes
+        // iOS: Enable native controls for fullscreen support
+        if (isIOS) {
+            video.controls = true;
+            video.setAttribute('controls', 'controls');
+        }
 
         if (Hls.isSupported() && url.includes('.m3u8')) {
             // Configure HLS.js for highest quality
@@ -243,8 +246,11 @@ const WatchPage = {
 
         if (this.state.hls) this.state.hls.destroy();
 
-        // iOS: Don't enable native controls - use CSS fullscreen instead
-        // Native iOS fullscreen causes video to shrink when changing episodes
+        // iOS: Enable native controls for fullscreen support
+        if (isIOS) {
+            video.controls = true;
+            video.setAttribute('controls', 'controls');
+        }
 
         const restoreFullscreenAfterLoad = () => {
             // For iOS inline styles fullscreen - reapply styles after video load
