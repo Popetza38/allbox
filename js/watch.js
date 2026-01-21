@@ -436,23 +436,28 @@ const WatchPage = {
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
             if (isIOS) {
-                // iOS: Use inline styles for fullscreen (highest priority, persists when changing episodes)
-                if (this.state.isFullscreen) {
-                    // Exit CSS fullscreen - remove inline styles
-                    wrapper.style.cssText = '';
-                    container.style.cssText = '';
-                    video.style.cssText = '';
-                    document.body.style.overflow = '';
-                    this.state.isFullscreen = false;
-                    fullscreen.innerHTML = '<i class="fas fa-expand"></i>';
-                } else {
-                    // Enter CSS fullscreen - apply inline styles
-                    wrapper.style.cssText = 'position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;width:100vw!important;height:100vh!important;z-index:9999!important;padding:0!important;margin:0!important;background:#000!important;';
-                    container.style.cssText = 'width:100vw!important;height:100vh!important;border-radius:0!important;';
-                    video.style.cssText = 'width:100%!important;height:100%!important;max-width:100vw!important;max-height:100vh!important;object-fit:contain!important;';
-                    document.body.style.overflow = 'hidden';
+                // iOS: Use native video fullscreen (webkitEnterFullscreen)
+                if (video.webkitEnterFullscreen) {
+                    try {
+                        video.webkitEnterFullscreen();
+                        this.state.isFullscreen = true;
+                    } catch (e) {
+                        console.log('iOS fullscreen failed:', e);
+                        // Fallback: show alert
+                        Swal.fire({
+                            toast: true,
+                            position: 'top',
+                            icon: 'info',
+                            title: 'กรุณาใช้ปุ่มขยายบน video player',
+                            showConfirmButton: false,
+                            timer: 2000,
+                            background: '#1a1a2e',
+                            color: '#fff'
+                        });
+                    }
+                } else if (video.webkitRequestFullscreen) {
+                    video.webkitRequestFullscreen();
                     this.state.isFullscreen = true;
-                    fullscreen.innerHTML = '<i class="fas fa-compress"></i>';
                 }
             } else if (document.fullscreenElement || document.webkitFullscreenElement) {
                 // Exit fullscreen
