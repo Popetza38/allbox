@@ -298,7 +298,16 @@ const WatchPage = {
             document.getElementById('videoLoading')?.classList.add('hidden');
         };
 
-        if (Hls.isSupported() && url.includes('.m3u8')) {
+        // iOS/Safari: Use native HLS (Safari supports HLS natively)
+        // This prevents video resize issues that occur with HLS.js on iOS
+        if (isIOS) {
+            video.src = url;
+            video.addEventListener('canplay', () => {
+                video.play().catch(() => { });
+                restoreFullscreenAfterLoad();
+            }, { once: true });
+        } else if (Hls.isSupported() && url.includes('.m3u8')) {
+            // Desktop/Android: Use HLS.js
             this.state.hls = new Hls({
                 autoStartLoad: true,
                 startLevel: -1,
