@@ -35,10 +35,24 @@ const WatchPage = {
         // Video controls
         this.initVideoPlayer();
 
-        // Track fullscreen changes
+        // Track fullscreen changes (Desktop/Android)
         document.addEventListener('fullscreenchange', () => {
             this.state.isFullscreen = !!document.fullscreenElement;
         });
+        document.addEventListener('webkitfullscreenchange', () => {
+            this.state.isFullscreen = !!document.webkitFullscreenElement;
+        });
+
+        // Track iOS fullscreen changes
+        const video = document.getElementById('videoPlayer');
+        if (video) {
+            video.addEventListener('webkitbeginfullscreen', () => {
+                this.state.isFullscreen = true;
+            });
+            video.addEventListener('webkitendfullscreen', () => {
+                this.state.isFullscreen = false;
+            });
+        }
     },
 
     async loadDrama() {
@@ -226,16 +240,28 @@ const WatchPage = {
         }
 
         const restoreFullscreenAfterLoad = () => {
-            if (restoreFullscreen && !isIOS) {
+            if (restoreFullscreen) {
                 // Re-enter fullscreen after video loads
                 setTimeout(() => {
-                    if (container.requestFullscreen) {
-                        container.requestFullscreen().catch(() => { });
-                    } else if (container.webkitRequestFullscreen) {
-                        container.webkitRequestFullscreen();
+                    if (isIOS) {
+                        // iOS: use webkitEnterFullscreen on video element
+                        if (video.webkitEnterFullscreen) {
+                            try {
+                                video.webkitEnterFullscreen();
+                            } catch (e) {
+                                console.log('iOS fullscreen restore failed:', e);
+                            }
+                        }
+                    } else {
+                        // Desktop/Android: use container fullscreen
+                        if (container.requestFullscreen) {
+                            container.requestFullscreen().catch(() => { });
+                        } else if (container.webkitRequestFullscreen) {
+                            container.webkitRequestFullscreen();
+                        }
                     }
                     this.state.isFullscreen = true;
-                }, 100);
+                }, 300); // Increased delay for iOS
             }
             document.getElementById('videoLoading')?.classList.add('hidden');
         };
