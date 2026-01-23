@@ -23,19 +23,6 @@ const WatchPage = {
             return;
         }
 
-        // Use native controls on ALL platforms
-        // Hide custom controls
-        const customControls = document.getElementById('videoControls');
-        if (customControls) {
-            customControls.style.display = 'none';
-        }
-        // Enable native controls
-        const video = document.getElementById('videoPlayer');
-        if (video) {
-            video.controls = true;
-            video.setAttribute('controls', 'controls');
-        }
-
         this.bindEvents();
         await this.loadDrama();
     },
@@ -48,24 +35,10 @@ const WatchPage = {
         // Video controls
         this.initVideoPlayer();
 
-        // Track fullscreen changes (Desktop/Android)
+        // Track fullscreen changes
         document.addEventListener('fullscreenchange', () => {
             this.state.isFullscreen = !!document.fullscreenElement;
         });
-        document.addEventListener('webkitfullscreenchange', () => {
-            this.state.isFullscreen = !!document.webkitFullscreenElement;
-        });
-
-        // Track iOS fullscreen changes
-        const video = document.getElementById('videoPlayer');
-        if (video) {
-            video.addEventListener('webkitbeginfullscreen', () => {
-                this.state.isFullscreen = true;
-            });
-            video.addEventListener('webkitendfullscreen', () => {
-                this.state.isFullscreen = false;
-            });
-        }
     },
 
     async loadDrama() {
@@ -144,44 +117,14 @@ const WatchPage = {
         const video = document.getElementById('videoPlayer');
         if (this.state.hls) this.state.hls.destroy();
 
-        // Detect iOS/iPadOS
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-        // iOS: Enable native controls for fullscreen support
-        if (isIOS) {
-            video.controls = true;
-            video.setAttribute('controls', 'controls');
-        }
-
         if (Hls.isSupported() && url.includes('.m3u8')) {
-            // Configure HLS.js for highest quality
-            this.state.hls = new Hls({
-                autoStartLoad: true,
-                startLevel: -1, // Start with auto selection
-                capLevelToPlayerSize: false, // Don't cap quality based on player size
-                maxBufferLength: 60,
-                maxMaxBufferLength: 120
-            });
+            this.state.hls = new Hls();
             this.state.hls.loadSource(url);
             this.state.hls.attachMedia(video);
-            this.state.hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                // Set to highest quality level
-                if (data.levels && data.levels.length > 0) {
-                    const highestLevel = data.levels.length - 1;
-                    this.state.hls.currentLevel = highestLevel;
-                    console.log(`📺 Set video quality to: ${data.levels[highestLevel]?.height}p (Level ${highestLevel})`);
-                }
+            this.state.hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 video.play();
                 document.getElementById('videoLoading')?.classList.add('hidden');
             });
-        } else if (isIOS && url.includes('.m3u8')) {
-            // iOS Safari supports HLS natively without HLS.js
-            video.src = url;
-            video.addEventListener('loadeddata', () => {
-                video.play();
-                document.getElementById('videoLoading')?.classList.add('hidden');
-            }, { once: true });
         } else {
             video.src = url;
             video.addEventListener('loadeddata', () => {
@@ -194,11 +137,6 @@ const WatchPage = {
     // Switch episode without page reload (SPA-style)
     async switchEpisode(ep) {
         if (ep < 1 || ep > this.state.chapters.length) return;
-
-        // Save fullscreen state before switching (including CSS fullscreen for iOS)
-        const wrapper = document.querySelector('.video-wrapper');
-        const isCSSFullscreen = wrapper?.classList.contains('css-fullscreen');
-        const wasFullscreen = document.fullscreenElement || document.webkitFullscreenElement || this.state.isFullscreen || isCSSFullscreen;
 
         // Show loading
         document.getElementById('videoLoading')?.classList.remove('hidden');
@@ -226,7 +164,7 @@ const WatchPage = {
         try {
             const video = await API.getVideoUrl(this.state.bookId, ep);
             const videoUrl = video.url || video.videoUrl || video;
-            this.loadVideoKeepFullscreen(videoUrl, wasFullscreen);
+            this.loadVideo(videoUrl);
 
             // Update watch history
             WatchHistory.update(this.state.bookId, {
@@ -236,101 +174,6 @@ const WatchPage = {
         } catch (error) {
             console.error('Error loading episode:', error);
             Common.showError('ไม่สามารถโหลดตอนนี้ได้');
-        }
-    },
-
-    // Load video and restore fullscreen state
-    loadVideoKeepFullscreen(url, restoreFullscreen) {
-        const video = document.getElementById('videoPlayer');
-        const container = document.getElementById('videoContainer');
-        const wrapper = document.querySelector('.video-wrapper');
-
-        // Detect iOS/iPadOS
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-        // IMPORTANT: Set video size BEFORE destroying HLS to prevent shrinking
-        if (isIOS && this.state.isFullscreen) {
-            // Lock video size during transition
-            video.style.cssText = 'width:100%!important;height:100%!important;max-width:100vw!important;max-height:100vh!important;object-fit:contain!important;';
-            wrapper.style.cssText = 'position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;width:100vw!important;height:100vh!important;z-index:9999!important;padding:0!important;margin:0!important;background:#000!important;';
-            container.style.cssText = 'width:100vw!important;height:100vh!important;border-radius:0!important;';
-        }
-
-        if (this.state.hls) this.state.hls.destroy();
-
-        // iOS: Enable native controls for fullscreen support
-        if (isIOS) {
-            video.controls = true;
-            video.setAttribute('controls', 'controls');
-        }
-
-        const restoreFullscreenAfterLoad = () => {
-            // For iOS: Show toast notification to re-enter fullscreen
-            if (isIOS && restoreFullscreen) {
-                // iOS cannot programmatically restore fullscreen - inform user
-                setTimeout(() => {
-                    Swal.fire({
-                        toast: true,
-                        position: 'top',
-                        icon: 'info',
-                        title: 'กดเต็มจอได้ที่ปุ่มขยายในวิดีโอ',
-                        showConfirmButton: false,
-                        timer: 3000,
-                        timerProgressBar: true,
-                        background: '#1a1a2e',
-                        color: '#fff'
-                    });
-                }, 500);
-            }
-
-            if (restoreFullscreen && !isIOS) {
-                // Desktop/Android: Re-enter native fullscreen after video loads
-                setTimeout(() => {
-                    if (container.requestFullscreen) {
-                        container.requestFullscreen().catch(() => { });
-                    } else if (container.webkitRequestFullscreen) {
-                        container.webkitRequestFullscreen();
-                    }
-                    this.state.isFullscreen = true;
-                }, 300);
-            }
-            document.getElementById('videoLoading')?.classList.add('hidden');
-        };
-
-        // iOS/Safari: Use native HLS (Safari supports HLS natively)
-        // This prevents video resize issues that occur with HLS.js on iOS
-        if (isIOS) {
-            video.src = url;
-            video.addEventListener('canplay', () => {
-                video.play().catch(() => { });
-                restoreFullscreenAfterLoad();
-            }, { once: true });
-        } else if (Hls.isSupported() && url.includes('.m3u8')) {
-            // Desktop/Android: Use HLS.js
-            this.state.hls = new Hls({
-                autoStartLoad: true,
-                startLevel: -1,
-                capLevelToPlayerSize: false,
-                maxBufferLength: 60,
-                maxMaxBufferLength: 120
-            });
-            this.state.hls.loadSource(url);
-            this.state.hls.attachMedia(video);
-            this.state.hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                if (data.levels && data.levels.length > 0) {
-                    const highestLevel = data.levels.length - 1;
-                    this.state.hls.currentLevel = highestLevel;
-                }
-                video.play();
-                restoreFullscreenAfterLoad();
-            });
-        } else {
-            video.src = url;
-            video.addEventListener('loadeddata', () => {
-                video.play();
-                restoreFullscreenAfterLoad();
-            }, { once: true });
         }
     },
 
@@ -451,24 +294,10 @@ const WatchPage = {
 
         fullscreen?.addEventListener('click', () => {
             const container = document.getElementById('videoContainer');
-
-            // iOS uses native controls, so this handler is mainly for desktop
-            if (document.fullscreenElement || document.webkitFullscreenElement) {
-                // Exit fullscreen
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                }
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
             } else {
-                // Enter fullscreen (standard or webkit prefix)
-                if (container.requestFullscreen) {
-                    container.requestFullscreen();
-                } else if (container.webkitRequestFullscreen) {
-                    container.webkitRequestFullscreen();
-                } else if (video.webkitEnterFullscreen) {
-                    video.webkitEnterFullscreen();
-                }
+                container.requestFullscreen();
             }
         });
 

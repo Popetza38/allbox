@@ -9,6 +9,14 @@
 
     <title>รายละเอียด - DramaPop</title>
 
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DramaPop">
+    <link rel="apple-touch-icon" href="icons/icon-192.svg">
+
     <link rel="icon" type="image/svg+xml"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 
@@ -72,6 +80,7 @@
             font-size: 16px;
             z-index: 100;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .detail-back-btn:hover {
@@ -82,7 +91,7 @@
         /* Content Container */
         .detail-content {
             position: relative;
-            margin-top: -180px;
+            margin-top: -120px;
             padding: 0 16px;
             max-width: 900px;
             margin-left: auto;
@@ -153,52 +162,40 @@
             padding: 4px 10px;
             background: rgba(255, 71, 87, 0.15);
             border: 1px solid rgba(255, 71, 87, 0.3);
-            border-radius: 12px;
+            border-radius: 20px;
             font-size: 11px;
-            color: #ff6b9d;
-            font-weight: 500;
+            color: var(--accent);
         }
 
         .detail-stats {
             display: flex;
             gap: 16px;
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.6);
             margin-bottom: 12px;
-        }
-
-        .detail-stat {
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            font-size: 13px;
+            color: var(--text-muted);
         }
 
         .detail-stat i {
+            margin-right: 4px;
             color: var(--accent);
-            font-size: 12px;
         }
 
         .detail-desc {
             font-size: 13px;
-            color: rgba(255, 255, 255, 0.5);
             line-height: 1.6;
+            color: var(--text-secondary);
+            margin: 0;
             display: -webkit-box;
-            -webkit-line-clamp: 2;
-            line-clamp: 2;
+            -webkit-line-clamp: 4;
             -webkit-box-orient: vertical;
             overflow: hidden;
-            margin: 0;
         }
 
         /* Action Buttons */
         .detail-actions {
             display: flex;
             gap: 12px;
-            padding: 0 16px;
-            margin-bottom: 24px;
-            max-width: 900px;
-            margin-left: auto;
-            margin-right: auto;
+            margin-bottom: 30px;
         }
 
         .detail-watch-btn {
@@ -207,12 +204,14 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            padding: 16px 24px;
-            background: linear-gradient(135deg, var(--accent) 0%, #ff6b9d 100%);
-            color: white;
-            font-size: 16px;
+            padding: 14px 24px;
+            background: var(--accent-gradient);
+            border: none;
+            border-radius: 30px;
+            font-size: 15px;
             font-weight: 600;
-            border-radius: 14px;
+            color: white;
+            cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 6px 20px rgba(255, 71, 87, 0.35);
         }
@@ -223,125 +222,116 @@
         }
 
         .detail-fav-btn {
-            width: 56px;
-            height: 56px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 14px;
+            font-size: 18px;
             color: rgba(255, 255, 255, 0.6);
-            font-size: 20px;
+            cursor: pointer;
             transition: all 0.3s ease;
-        }
-
-        .detail-fav-btn:hover {
-            background: rgba(255, 71, 87, 0.2);
-            border-color: var(--accent);
-            color: var(--accent);
         }
 
         .detail-fav-btn.active {
             background: var(--accent);
-            border-color: transparent;
+            border-color: var(--accent);
             color: white;
+        }
+
+        .detail-fav-btn:hover {
+            transform: scale(1.1);
         }
 
         /* Episodes Section */
         .episodes-section {
-            padding: 0 16px;
-            max-width: 900px;
-            margin: 0 auto;
+            background: rgba(20, 20, 40, 0.5);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .episodes-header {
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
             margin-bottom: 16px;
         }
 
         .episodes-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             color: white;
             margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .episodes-title i {
             color: var(--accent);
-            margin-right: 8px;
         }
 
         .episodes-count {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
-            background: rgba(255, 255, 255, 0.08);
-            padding: 4px 10px;
-            border-radius: 10px;
+            font-size: 13px;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
         }
 
         .episodes-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
             gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .episode-btn {
-            padding: 14px 8px;
+            padding: 12px 8px;
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 10px;
-            color: rgba(255, 255, 255, 0.7);
             font-size: 13px;
             font-weight: 500;
-            transition: all 0.3s ease;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
             text-align: center;
         }
 
         .episode-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 71, 87, 0.2);
+            border-color: var(--accent);
             color: white;
-            border-color: rgba(255, 71, 87, 0.5);
         }
 
         .episode-btn.watched {
-            background: linear-gradient(135deg, var(--accent) 0%, #ff6b9d 100%);
-            color: white;
+            background: var(--accent-gradient);
             border-color: transparent;
+            color: white;
         }
 
         .no-episodes {
             text-align: center;
-            padding: 40px 20px;
-            color: rgba(255, 255, 255, 0.4);
+            color: var(--text-muted);
+            padding: 30px;
         }
 
         /* Responsive */
-        @media (max-width: 480px) {
-            .detail-hero {
-                height: 45vh;
-                min-height: 280px;
-            }
-
-            .detail-content {
-                margin-top: -100px;
-            }
-
+        @media (max-width: 600px) {
             .detail-card {
                 flex-direction: column;
                 align-items: center;
                 text-align: center;
-                padding: 16px;
             }
 
             .detail-poster {
                 width: 140px;
-            }
-
-            .detail-title {
-                font-size: 18px;
             }
 
             .detail-tags {
@@ -351,30 +341,19 @@
             .detail-stats {
                 justify-content: center;
             }
-
-            .episodes-grid {
-                grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-                gap: 8px;
-            }
-
-            .episode-btn {
-                padding: 12px 6px;
-                font-size: 12px;
-            }
         }
 
         @media (min-width: 768px) {
             .detail-poster {
-                width: 150px;
+                width: 160px;
             }
 
             .detail-title {
                 font-size: 24px;
             }
 
-            .detail-desc {
-                -webkit-line-clamp: 3;
-                line-clamp: 3;
+            .episodes-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
             }
         }
     </style>
@@ -393,66 +372,78 @@
                 <div class="loader-ring"></div>
                 <div class="loader-ring"></div>
             </div>
-            <span class="loader-text">กำลังโหลด<span
+            <span class="loader-text" data-i18n="common.loading">กำลังโหลด<span
                     class="loader-dots"><span></span><span></span><span></span></span></span>
         </div>
     </div>
 
-    <!-- Back Button -->
-    <button class="detail-back-btn" id="detailBackBtn">
-        <i class="fas fa-arrow-left"></i>
-    </button>
-
-    <!-- Main Content -->
     <main class="detail-page">
-        <!-- Hero Section -->
+        <!-- Back Button -->
+        <button class="detail-back-btn" id="detailBackBtn">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+
+        <!-- Hero with Backdrop -->
         <div class="detail-hero">
             <div class="detail-backdrop" id="detailBackdrop"></div>
         </div>
 
-        <!-- Detail Content -->
+        <!-- Content -->
         <div class="detail-content">
+            <!-- Info Card -->
             <div id="detailCard"></div>
+
+            <!-- Action Buttons -->
+            <div class="detail-actions" id="detailActions"></div>
+
+            <!-- Episodes Section -->
+            <section class="episodes-section">
+                <div class="episodes-header">
+                    <h3 class="episodes-title">
+                        <i class="fas fa-list"></i><span data-i18n="detail.episodeList">รายการตอน</span>
+                    </h3>
+                    <span class="episodes-count" id="episodesCount"></span>
+                </div>
+                <div class="episodes-grid" id="episodesGrid"></div>
+            </section>
         </div>
-
-        <!-- Action Buttons -->
-        <div class="detail-actions" id="detailActions"></div>
-
-        <!-- Episodes Section -->
-        <section class="episodes-section">
-            <div class="episodes-header">
-                <h3 class="episodes-title">
-                    <i class="fas fa-list"></i>รายการตอน
-                </h3>
-                <span class="episodes-count" id="episodesCount"></span>
-            </div>
-            <div class="episodes-grid" id="episodesGrid"></div>
-        </section>
     </main>
 
     <!-- Bottom Navigation -->
     <nav class="bottom-nav" id="bottomNav">
         <a href="index.html" class="bottom-nav-item" data-page="home">
             <i class="fas fa-home"></i>
-            <span>หน้าแรก</span>
+            <span data-i18n="nav.home">หน้าแรก</span>
         </a>
         <a href="category.html?type=new" class="bottom-nav-item" data-page="new">
             <i class="fas fa-star"></i>
-            <span>มาใหม่</span>
+            <span data-i18n="nav.new">มาใหม่</span>
         </a>
         <a href="category.html?type=ranking" class="bottom-nav-item" data-page="ranking">
             <i class="fas fa-trophy"></i>
-            <span>ยอดนิยม</span>
+            <span data-i18n="nav.popular">ยอดนิยม</span>
         </a>
         <a href="history.html" class="bottom-nav-item" data-page="history">
             <i class="fas fa-history"></i>
-            <span>ประวัติ</span>
+            <span data-i18n="nav.history">ประวัติ</span>
         </a>
     </nav>
 
     <script src="js/api.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/common.js"></script>
     <script src="js/detail.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW registered:', reg.scope))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
 </body>
 
 </html>

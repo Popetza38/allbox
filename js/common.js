@@ -98,17 +98,24 @@ const Common = {
 
                 localStorage.setItem('preferredLanguage', lang);
                 API.setLanguage(lang);
+
+                // Update I18n and translate page
+                if (window.I18n) {
+                    I18n.setLanguage(lang);
+                }
+
                 selector.classList.remove('active');
 
                 Swal.fire({
                     icon: 'success',
-                    title: 'เปลี่ยนภาษาเสียงสำเร็จ',
-                    text: `กำลังโหลดหนัง${langName}...`,
-                    timer: 1500,
+                    title: I18n ? I18n.t('alerts.languageChanged') : 'Language Changed',
+                    text: `${langName}...`,
+                    timer: 1200,
                     showConfirmButton: false,
                     background: '#1a1a1a',
                     color: '#fff'
                 }).then(() => {
+                    // Reload page to fetch content in new language
                     window.location.reload();
                 });
             });
@@ -118,6 +125,9 @@ const Common = {
         const savedLang = localStorage.getItem('preferredLanguage');
         if (savedLang) {
             API.setLanguage(savedLang);
+            if (window.I18n) {
+                I18n.setLanguage(savedLang, false);
+            }
             const savedOption = dropdown.querySelector(`[data-lang="${savedLang}"]`);
             if (savedOption) {
                 const flag = savedOption.querySelector('.flag-icon').textContent;

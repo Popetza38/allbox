@@ -880,7 +880,7 @@ button {
     max-width: 1000px;
     margin: 0 auto;
     padding: 20px;
-    padding-top: 35vh;
+    padding-top: 20px;
 }
 
 .detail-header {
@@ -892,9 +892,9 @@ button {
 }
 
 .detail-header-back {
-    position: absolute;
-    top: -30vh;
-    left: 0;
+    position: fixed;
+    top: 20px;
+    left: 20px;
     width: 44px;
     height: 44px;
     background: var(--bg-glass);
@@ -1883,4 +1883,259 @@ button {
     .bottom-nav {
         padding-bottom: max(8px, env(safe-area-inset-bottom));
     }
+}
+
+/* ========================================
+   PWA Features
+   ======================================== */
+
+/* PWA Install Banner */
+.pwa-install-banner {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: var(--shadow-lg);
+    z-index: 9000;
+    max-width: 90%;
+    width: 400px;
+    animation: slideUp 0.3s ease;
+}
+
+.pwa-install-banner.hidden {
+    display: none;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.pwa-install-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--accent-gradient);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.pwa-install-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.pwa-install-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.pwa-install-text {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.pwa-install-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.pwa-install-btn {
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.pwa-install-btn.primary {
+    background: var(--accent-gradient);
+    color: white;
+}
+
+.pwa-install-btn.secondary {
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.pwa-install-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Offline Indicator */
+.offline-indicator {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 71, 87, 0.9);
+    color: white;
+    padding: 10px 20px;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 8000;
+    box-shadow: var(--shadow-md);
+    animation: fadeInDown 0.3s ease;
+}
+
+.offline-indicator.hidden {
+    display: none;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Pull to Refresh */
+.pull-to-refresh {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100%);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-full);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    z-index: 7000;
+    transition: transform 0.3s ease;
+}
+
+.pull-to-refresh.visible {
+    transform: translateX(-50%) translateY(10px);
+}
+
+.pull-to-refresh.refreshing {
+    transform: translateX(-50%) translateY(10px);
+}
+
+.pull-to-refresh-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-glass);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Image Skeleton Loading */
+.skeleton {
+    background: linear-gradient(90deg,
+            rgba(255, 255, 255, 0.05) 25%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0.05) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.drama-poster.loading {
+    background: var(--bg-secondary);
+}
+
+.drama-poster.loading::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+            transparent 25%,
+            rgba(255, 255, 255, 0.1) 50%,
+            transparent 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+    .drama-card:active {
+        transform: scale(0.98);
+    }
+
+    .video-btn:active,
+    .episode-btn:active,
+    .bottom-nav-item:active {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+
+    .slider-nav {
+        opacity: 1;
+        width: 36px;
+        height: 36px;
+    }
+}
+
+/* Updated version indicator */
+.update-banner {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--accent) 0%, #ff6b9d 100%);
+    color: white;
+    padding: 12px 24px;
+    border-radius: var(--radius-full);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 9000;
+    box-shadow: var(--shadow-glow);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.update-banner:hover {
+    transform: translateX(-50%) scale(1.02);
+}
+
+.update-banner.hidden {
+    display: none;
 }

@@ -9,6 +9,14 @@
 
     <title>ประวัติการดู - DramaPop</title>
 
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DramaPop">
+    <link rel="apple-touch-icon" href="icons/icon-192.svg">
+
     <link rel="icon" type="image/svg+xml"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 
@@ -90,10 +98,10 @@
     <main class="history-page">
         <div class="history-header">
             <h1 class="history-title">
-                <i class="fas fa-history"></i> ประวัติการดู
+                <i class="fas fa-history"></i> <span data-i18n="history.title">ประวัติการดู</span>
             </h1>
             <button class="clear-all-btn" id="clearAllHistory" style="display: none;">
-                <i class="fas fa-trash"></i> ลบทั้งหมด
+                <i class="fas fa-trash"></i> <span data-i18n="history.clearHistory">ลบทั้งหมด</span>
             </button>
         </div>
         <div class="history-list" id="historyResults"></div>
@@ -103,25 +111,37 @@
     <nav class="bottom-nav" id="bottomNav">
         <a href="index.html" class="bottom-nav-item" data-page="home">
             <i class="fas fa-home"></i>
-            <span>หน้าแรก</span>
+            <span data-i18n="nav.home">หน้าแรก</span>
         </a>
         <a href="category.html?type=new" class="bottom-nav-item" data-page="new">
             <i class="fas fa-star"></i>
-            <span>มาใหม่</span>
+            <span data-i18n="nav.new">มาใหม่</span>
         </a>
         <a href="category.html?type=ranking" class="bottom-nav-item" data-page="ranking">
             <i class="fas fa-trophy"></i>
-            <span>ยอดนิยม</span>
+            <span data-i18n="nav.popular">ยอดนิยม</span>
         </a>
         <a href="history.html" class="bottom-nav-item active" data-page="history">
             <i class="fas fa-history"></i>
-            <span>ประวัติ</span>
+            <span data-i18n="nav.history">ประวัติ</span>
         </a>
     </nav>
 
     <script src="js/api.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/common.js"></script>
     <script src="js/history.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW registered:', reg.scope))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
 </body>
 
 </html>
