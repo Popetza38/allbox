@@ -1,5 +1,6 @@
 /**
  * DramaPop Detail Page JavaScript
+ * Premium Netflix-Style UI with Horizontal Episode Carousel
  */
 
 const DetailPage = {
@@ -26,6 +27,67 @@ const DetailPage = {
         document.getElementById('detailBackBtn')?.addEventListener('click', () => {
             window.location.href = 'index.html';
         });
+
+        // Share button
+        document.getElementById('shareBtn')?.addEventListener('click', () => {
+            this.shareContent();
+        });
+    },
+
+    async shareContent() {
+        const url = window.location.href;
+        const title = this.state.dramaData?.bookName || 'DramaPop';
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: title,
+                    text: `ดู ${title} บน DramaPop`,
+                    url: url
+                });
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    this.copyToClipboard(url);
+                }
+            }
+        } else {
+            this.copyToClipboard(url);
+        }
+    },
+
+    copyToClipboard(text) {
+        navigator.clipboard?.writeText(text).then(() => {
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: 'success',
+                title: 'คัดลอกลิงก์แล้ว',
+                showConfirmButton: false,
+                timer: 1500,
+                background: 'rgba(20, 20, 45, 0.95)',
+                color: '#fff'
+            });
+        });
+    },
+
+    generateRatingStars(score = 4.5) {
+        const fullStars = Math.floor(score);
+        const hasHalf = score % 1 >= 0.5;
+        const emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);
+
+        let html = '<div class="rating-stars">';
+        for (let i = 0; i < fullStars; i++) {
+            html += '<i class="fas fa-star"></i>';
+        }
+        if (hasHalf) {
+            html += '<i class="fas fa-star-half-alt"></i>';
+        }
+        for (let i = 0; i < emptyStars; i++) {
+            html += '<i class="far fa-star empty"></i>';
+        }
+        html += '</div>';
+        html += `<span class="rating-score">${score.toFixed(1)}</span>`;
+        return html;
     },
 
     async loadDetail() {
@@ -50,7 +112,6 @@ const DetailPage = {
             const introduction = dramaData.introduction || dramaData.description || 'ไม่มีเรื่องย่อ';
 
             // Handle chapters - use chapterCount to generate full episode list
-            // Get cover from dramaData.chapterList (has chapterImg)
             let coverFromChapter = '';
             if (dramaData.chapterList && dramaData.chapterList.length > 0) {
                 coverFromChapter = dramaData.chapterList[0]?.chapterImg || '';
@@ -59,7 +120,6 @@ const DetailPage = {
             // Generate full chapter list from chapterCount
             let chapterList = [];
             if (chapterCount > 0) {
-                // Create full episode list based on chapterCount
                 chapterList = Array.from({ length: chapterCount }, (_, i) => ({ chapterIndex: i }));
             } else if (Array.isArray(chapters)) {
                 chapterList = chapters;
@@ -86,52 +146,54 @@ const DetailPage = {
             // Render UI
             document.getElementById('detailBackdrop').style.backgroundImage = cover ? `url(${cover})` : 'none';
 
-            // Detail Card
+            // Generate random rating for demo (in production, would come from API)
+            const rating = (Math.random() * 1.5 + 3.5).toFixed(1);
+
+            // Detail Card - Premium Design
             document.getElementById('detailCard').innerHTML = `
                 <div class="detail-card">
-                    <div class="detail-poster">${cover ? `<img src="${cover}" alt="${bookName}" onerror="this.style.display='none'">` : '<div class="no-poster"><i class="fas fa-film"></i></div>'}</div>
+                    <div class="detail-poster">
+                        ${cover
+                    ? `<img src="${cover}" alt="${bookName}" onerror="this.parentElement.innerHTML='<div class=\\'no-poster\\'><i class=\\'fas fa-film\\'></i></div>'">`
+                    : '<div class="no-poster"><i class="fas fa-film"></i></div>'
+                }
+                    </div>
                     <div class="detail-info">
                         <h1 class="detail-title">${bookName}</h1>
-                        <div class="detail-tags">${tags.map(t => `<span class="detail-tag">${t}</span>`).join('')}</div>
+                        <div class="detail-rating">
+                            ${this.generateRatingStars(parseFloat(rating))}
+                        </div>
+                        <div class="detail-tags">
+                            ${chapterCount > 50 ? '<span class="detail-tag hot">🔥 HOT</span>' : ''}
+                            ${tags.slice(0, 4).map(t => `<span class="detail-tag">${t}</span>`).join('')}
+                        </div>
                         <div class="detail-stats">
                             <span class="detail-stat"><i class="fas fa-film"></i> ${chapterCount} ตอน</span>
-                            <span class="detail-stat"><i class="fas fa-eye"></i> ${playCount}</span>
+                            <span class="detail-stat"><i class="fas fa-eye"></i> ${this.formatViewCount(playCount)}</span>
                         </div>
                         <p class="detail-desc">${introduction}</p>
                     </div>
                 </div>
             `;
 
-            // Action Buttons
+            // Action Buttons - Premium
             document.getElementById('detailActions').innerHTML = `
                 <button class="detail-watch-btn" id="watchNowBtn">
                     <i class="fas fa-play"></i> ดูเลย
                 </button>
-                <button class="detail-fav-btn ${isFav ? 'active' : ''}" id="favBtn">
+                <button class="detail-fav-btn ${isFav ? 'active' : ''}" id="favBtn" title="เพิ่มในรายการโปรด">
                     <i class="fas fa-heart"></i>
+                </button>
+                <button class="detail-action-btn" id="inlineShareBtn" title="แชร์">
+                    <i class="fas fa-share"></i>
                 </button>
             `;
 
             // Episodes Count
             document.getElementById('episodesCount').textContent = `${chapterCount} ตอน`;
 
-            // Render episodes
-            const episodesGrid = document.getElementById('episodesGrid');
-            if (this.state.chapters.length > 0) {
-                // Check for watch history to highlight last watched
-                const history = WatchHistory.get(this.state.bookId);
-                const lastEpisode = history?.lastEpisode || 0;
-
-                episodesGrid.innerHTML = this.state.chapters.map((ch, i) => {
-                    const epNum = (ch.chapterIndex !== undefined ? ch.chapterIndex : i) + 1;
-                    const isLastWatched = epNum === lastEpisode;
-                    return `<button class="episode-btn ${isLastWatched ? 'watched' : ''}" data-index="${epNum}">
-                        ${isLastWatched ? '<i class="fas fa-play-circle"></i> ' : ''}ตอนที่ ${epNum}
-                    </button>`;
-                }).join('');
-            } else {
-                episodesGrid.innerHTML = '<p class="no-episodes">ไม่พบรายการตอน</p>';
-            }
+            // Render episodes carousel
+            this.renderEpisodesCarousel();
 
             // Bind events
             document.getElementById('watchNowBtn')?.addEventListener('click', () => {
@@ -159,15 +221,14 @@ const DetailPage = {
                     title: added ? 'เพิ่มในรายการโปรดแล้ว' : 'ลบออกจากรายการโปรดแล้ว',
                     showConfirmButton: false,
                     timer: 1500,
-                    background: '#1a1a1a',
+                    background: 'rgba(20, 20, 45, 0.95)',
                     color: '#fff'
                 });
             });
 
-            document.querySelectorAll('.episode-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    window.location.href = `watch.html?id=${this.state.bookId}&ep=${btn.dataset.index}`;
-                });
+            // Inline share button
+            document.getElementById('inlineShareBtn')?.addEventListener('click', () => {
+                this.shareContent();
             });
 
             Common.closeLoading();
@@ -175,7 +236,58 @@ const DetailPage = {
             console.error('Detail error:', error);
             Common.showError('ไม่สามารถโหลดข้อมูลซีรี่ย์ได้');
         }
+    },
+
+    formatViewCount(count) {
+        if (typeof count === 'string') {
+            count = parseInt(count.replace(/,/g, '')) || 0;
+        }
+        if (count >= 1000000) {
+            return (count / 1000000).toFixed(1) + 'M';
+        } else if (count >= 1000) {
+            return (count / 1000).toFixed(1) + 'K';
+        }
+        return count.toString();
+    },
+
+    renderEpisodesCarousel() {
+        const carousel = document.getElementById('episodesCarousel');
+        if (!carousel) return;
+
+        // Check for watch history to highlight last watched
+        const history = WatchHistory.get(this.state.bookId);
+        const lastEpisode = history?.lastEpisode || 0;
+
+        if (this.state.chapters.length > 0) {
+            carousel.innerHTML = this.state.chapters.map((ch, i) => {
+                const epNum = (ch.chapterIndex !== undefined ? ch.chapterIndex : i) + 1;
+                const isLastWatched = epNum === lastEpisode;
+                return `
+                    <div class="episode-card ${isLastWatched ? 'watching' : ''}" data-index="${epNum}">
+                        <div class="ep-title">ตอนที่ ${epNum}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Bind click events
+            carousel.querySelectorAll('.episode-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    window.location.href = `watch.html?id=${this.state.bookId}&ep=${card.dataset.index}`;
+                });
+            });
+
+            // Scroll to active episode
+            setTimeout(() => {
+                const activeCard = carousel.querySelector('.episode-card.watching');
+                if (activeCard) {
+                    activeCard.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            }, 100);
+        } else {
+            carousel.innerHTML = '<p class="no-episodes"><i class="fas fa-inbox"></i>ไม่พบรายการตอน</p>';
+        }
     }
 };
 
 document.addEventListener('DOMContentLoaded', () => DetailPage.init());
+

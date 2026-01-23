@@ -1,6 +1,6 @@
 /**
  * DramaPop Watch Page JavaScript
- * SPA-style episode switching (no page reload, keeps fullscreen)
+ * Premium Theater Mode with SPA-style episode switching
  */
 
 const WatchPage = {
@@ -10,7 +10,8 @@ const WatchPage = {
         chapters: [],
         hls: null,
         dramaData: null,
-        isFullscreen: false
+        isFullscreen: false,
+        isFavorite: false
     },
 
     async init() {
@@ -32,12 +33,94 @@ const WatchPage = {
             window.location.href = `detail.html?id=${this.state.bookId}`;
         });
 
+        // Info panel buttons
+        document.getElementById('infoFavBtn')?.addEventListener('click', () => {
+            this.toggleFavorite();
+        });
+
+        document.getElementById('infoShareBtn')?.addEventListener('click', () => {
+            this.shareContent();
+        });
+
         // Video controls
         this.initVideoPlayer();
 
         // Track fullscreen changes
         document.addEventListener('fullscreenchange', () => {
             this.state.isFullscreen = !!document.fullscreenElement;
+        });
+
+        // Show top bar on mouse movement
+        let hideTimeout;
+        document.querySelector('.watch-page')?.addEventListener('mousemove', () => {
+            document.querySelector('.watch-top-bar')?.classList.add('visible');
+            clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(() => {
+                document.querySelector('.watch-top-bar')?.classList.remove('visible');
+            }, 3000);
+        });
+    },
+
+    async shareContent() {
+        const url = window.location.href;
+        const title = this.state.dramaData?.bookName || 'DramaPop';
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `${title} - ตอนที่ ${this.state.currentEpisode}`,
+                    text: `ดู ${title} ตอนที่ ${this.state.currentEpisode} บน DramaPop`,
+                    url: url
+                });
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    this.copyToClipboard(url);
+                }
+            }
+        } else {
+            this.copyToClipboard(url);
+        }
+    },
+
+    copyToClipboard(text) {
+        navigator.clipboard?.writeText(text).then(() => {
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: 'success',
+                title: 'คัดลอกลิงก์แล้ว',
+                showConfirmButton: false,
+                timer: 1500,
+                background: 'rgba(20, 20, 45, 0.95)',
+                color: '#fff'
+            });
+        });
+    },
+
+    toggleFavorite() {
+        const dramaData = this.state.dramaData;
+        if (!dramaData) return;
+
+        const added = Favorites.toggle({
+            bookId: this.state.bookId,
+            bookName: dramaData.bookName || 'Unknown',
+            cover: dramaData.cover || '',
+            chapterCount: dramaData.chapterCount || 0
+        });
+
+        this.state.isFavorite = added;
+        const btn = document.getElementById('infoFavBtn');
+        btn?.classList.toggle('active', added);
+
+        Swal.fire({
+            toast: true,
+            position: 'top',
+            icon: added ? 'success' : 'info',
+            title: added ? 'เพิ่มในรายการโปรดแล้ว' : 'ลบออกจากรายการโปรดแล้ว',
+            showConfirmButton: false,
+            timer: 1500,
+            background: 'rgba(20, 20, 45, 0.95)',
+            color: '#fff'
         });
     },
 
@@ -55,6 +138,10 @@ const WatchPage = {
 
             const dramaData = detail?.drama || detail?.data || detail || {};
             this.state.dramaData = dramaData;
+
+            // Check if favorited
+            this.state.isFavorite = Favorites.isFavorite(this.state.bookId);
+            document.getElementById('infoFavBtn')?.classList.toggle('active', this.state.isFavorite);
 
             // Get cover from dramaData.chapterList
             let coverFromChapter = '';
@@ -85,9 +172,15 @@ const WatchPage = {
             // Get cover
             let cover = dramaData.cover || coverFromChapter;
 
-            // Update title
+            // Update titles
             const title = dramaData.bookName || 'กำลังเล่น...';
-            document.getElementById('watchTitle').textContent = `${title} - ตอนที่ ${this.state.currentEpisode}`;
+            document.getElementById('watchTitle').textContent = title;
+            document.getElementById('videoTitle2').textContent = title;
+            document.getElementById('episodeBadge').textContent = `ตอนที่ ${this.state.currentEpisode}`;
+
+            // Update description
+            const desc = dramaData.introduction || dramaData.description || 'ไม่มีเรื่องย่อ';
+            document.getElementById('videoDesc').textContent = desc;
 
             // Save to watch history
             WatchHistory.add({
@@ -234,12 +327,21 @@ const WatchPage = {
         // Update UI
         document.getElementById('currentEpisode').textContent = `ตอนที่ ${ep}`;
         const title = this.state.dramaData?.bookName || 'กำลังเล่น...';
-        document.getElementById('watchTitle').textContent = `${title} - ตอนที่ ${ep}`;
+        document.getElementById('watchTitle').textContent = title;
+
+        // Update info panel
+        document.getElementById('episodeBadge').textContent = `ตอนที่ ${ep}`;
 
         // Update episode list active state
         document.querySelectorAll('.episode-btn').forEach(btn => {
             btn.classList.toggle('active', parseInt(btn.dataset.index) === ep);
         });
+
+        // Scroll to active episode
+        const activeBtn = document.querySelector('.episode-btn.active');
+        if (activeBtn) {
+            activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
 
         // Update nav buttons
         this.updateEpisodeNav();
