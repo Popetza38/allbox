@@ -4,141 +4,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="ประวัติการดู - DramaPop">
-    <meta name="theme-color" content="#0a0a1a">
-
-    <title>ประวัติการดู - DramaPop</title>
-
-    <!-- PWA Meta Tags -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="DramaPop">
-    <link rel="apple-touch-icon" href="icons/icon-192.svg">
-
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
-
+    <meta name="theme-color" content="#0a0a0a">
+    <title>ประวัติการดู - DramaBox</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Niramit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loader">
-            <div class="loader-logo">
-                <i class="fas fa-film"></i>
-                <span>DramaPop</span>
-            </div>
-            <div class="loader-spinner">
-                <div class="loader-ring"></div>
-                <div class="loader-ring"></div>
-                <div class="loader-ring"></div>
-            </div>
-            <span class="loader-text">กำลังโหลด<span
-                    class="loader-dots"><span></span><span></span><span></span></span></span>
-        </div>
-    </div>
-
-    <!-- Header -->
-    <header class="header scrolled" id="header">
+    <header class="header scrolled">
         <div class="header-container">
-            <a href="index.html" class="logo">
-                <i class="fas fa-film logo-icon"></i>
-                <span class="logo-text">DramaPop</span>
-            </a>
-
-            <div class="search-container">
-                <form class="search-form" id="searchForm">
-                    <input type="text" class="search-input" id="searchInput" placeholder="ค้นหาซีรี่ย์...">
-                    <button type="submit" class="search-btn">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </form>
-            </div>
-
-            <nav class="nav-desktop">
-                <a href="index.html" class="nav-link" data-page="home">
-                    <i class="fas fa-home"></i> หน้าแรก
-                </a>
-                <a href="history.html" class="nav-link active" data-page="history">
-                    <i class="fas fa-history"></i> ประวัติ
-                </a>
-            </nav>
-
-            <button class="mobile-search-btn" id="mobileSearchBtn">
-                <i class="fas fa-search"></i>
-            </button>
+            <a href="/" class="logo">🎬 Drama<span>Box</span></a>
+            <h2 style="flex:1;font-size:1.2rem;font-weight:600" data-i18n="watchHistory">📜 ประวัติการดู</h2>
+            <select id="langSelect" class="lang-selector">
+                <option value="th">🇹🇭 ไทย</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
         </div>
     </header>
 
-    <!-- Mobile Search Modal -->
-    <div class="mobile-search-modal" id="mobileSearchModal">
-        <div class="mobile-search-container">
-            <form class="mobile-search-form" id="mobileSearchForm">
-                <button type="button" class="mobile-search-close" id="mobileSearchClose">
-                    <i class="fas fa-arrow-left"></i>
+    <main class="main-content">
+        <div class="container">
+            <div class="row-header" style="margin-bottom:24px">
+                <h2 class="row-title" data-i18n="watchHistory">📜 ประวัติการดู</h2>
+                <button class="btn btn-secondary" onclick="clearAllHistory()" style="padding:10px 18px;font-size:.9rem">
+                    🗑️ <span data-i18n="clearHistory">ล้างประวัติ</span>
                 </button>
-                <input type="text" class="mobile-search-input" id="mobileSearchInput" placeholder="ค้นหาซีรี่ย์...">
-                <button type="submit" class="mobile-search-submit">
-                    <i class="fas fa-search"></i>
-                </button>
-            </form>
+            </div>
+            <div id="historyList" class="history-list"></div>
         </div>
-    </div>
-
-    <!-- Main Content -->
-    <main class="history-page">
-        <div class="history-header">
-            <h1 class="history-title">
-                <i class="fas fa-history"></i> <span data-i18n="history.title">ประวัติการดู</span>
-            </h1>
-            <button class="clear-all-btn" id="clearAllHistory" style="display: none;">
-                <i class="fas fa-trash"></i> <span data-i18n="history.clearHistory">ลบทั้งหมด</span>
-            </button>
-        </div>
-        <div class="history-list" id="historyResults"></div>
     </main>
 
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav" id="bottomNav">
-        <a href="index.html" class="bottom-nav-item" data-page="home">
-            <i class="fas fa-home"></i>
-            <span data-i18n="nav.home">หน้าแรก</span>
-        </a>
-        <a href="category.html?type=new" class="bottom-nav-item" data-page="new">
-            <i class="fas fa-star"></i>
-            <span data-i18n="nav.new">มาใหม่</span>
-        </a>
-        <a href="category.html?type=ranking" class="bottom-nav-item" data-page="ranking">
-            <i class="fas fa-trophy"></i>
-            <span data-i18n="nav.popular">ยอดนิยม</span>
-        </a>
-        <a href="history.html" class="bottom-nav-item active" data-page="history">
-            <i class="fas fa-history"></i>
-            <span data-i18n="nav.history">ประวัติ</span>
-        </a>
+    <nav class="bottom-nav">
+        <a href="/" class="nav-item"><span class="icon">🏠</span><span class="label"
+                data-i18n="home">หน้าหลัก</span></a>
+        <a href="#" class="nav-item"><span class="icon">🔍</span><span class="label" data-i18n="search">ค้นหา</span></a>
+        <a href="history" class="nav-item active"><span class="icon">📜</span><span class="label"
+                data-i18n="history">ประวัติ</span></a>
+        <a href="#" class="nav-item"><span class="icon">👤</span><span class="label"
+                data-i18n="profile">โปรไฟล์</span></a>
     </nav>
 
-    <script src="js/api.js"></script>
     <script src="js/i18n.js"></script>
-    <script src="js/common.js"></script>
     <script src="js/history.js"></script>
-
-    <!-- Service Worker Registration -->
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('SW registered:', reg.scope))
-                    .catch(err => console.log('SW registration failed:', err));
+        document.addEventListener('DOMContentLoaded', () => {
+            initLang();
+            updateUIText();
+            renderHistory();
+            watchHistory.onChange(renderHistory);
+            i18n.onLanguageChange(() => { updateUIText(); renderHistory(); });
+        });
+
+        function initLang() {
+            const s = document.getElementById('langSelect');
+            s.value = i18n.getLanguage();
+            s.addEventListener('change', e => i18n.setLanguage(e.target.value));
+        }
+
+        function updateUIText() {
+            document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = i18n.t(el.dataset.i18n));
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            const items = watchHistory.getAll();
+
+            if (items.length === 0) {
+                container.innerHTML = `
+          <div class="empty-state slide-up">
+            <div class="empty-icon">📺</div>
+            <h3 class="empty-title">${i18n.t('noHistory')}</h3>
+            <p class="empty-description">${i18n.t('noHistoryDesc')}</p>
+            <a href="/" class="btn btn-primary">🏠 ${i18n.t('home')}</a>
+          </div>
+        `;
+                return;
+            }
+
+            container.innerHTML = items.map(item => {
+                const percent = watchHistory.getProgressPercent(item);
+                const time = i18n.formatRelativeTime(item.lastWatched);
+                return `
+          <div class="history-item" onclick="continueWatch('${item.bookId}', ${item.episodeIndex})">
+            <div class="history-poster">
+              <img src="${item.coverUrl}" alt="${item.bookName}" loading="lazy" 
+                   onerror="this.src='https://placehold.co/200x300/1c1c1c/666?text=No+Image'">
+            </div>
+            <div class="history-info">
+              <h3 class="history-title">${item.bookName}</h3>
+              <p class="history-episode">${item.episodeName} • ${item.episodeIndex + 1}/${item.totalEpisodes}</p>
+              <div class="history-progress-bar"><div class="history-progress-fill" style="width:${percent}%"></div></div>
+              <p class="history-time">${i18n.t('watchedPercent')}: ${percent}% • ${time}</p>
+            </div>
+            <div class="history-delete" onclick="event.stopPropagation();removeItem('${item.bookId}')">🗑️</div>
+          </div>
+        `;
+            }).join('');
+        }
+
+        function continueWatch(bookId, epIdx) {
+            location.href = `watch?id=${bookId}&ep=${epIdx}`;
+        }
+
+        function removeItem(bookId) {
+            Swal.fire({
+                title: i18n.t('confirm'),
+                text: 'ลบรายการนี้ออกจากประวัติ?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e50914',
+                cancelButtonColor: '#333',
+                confirmButtonText: i18n.t('confirm'),
+                cancelButtonText: i18n.t('cancel'),
+                background: '#181818',
+                color: '#fff'
+            }).then(r => {
+                if (r.isConfirmed) {
+                    watchHistory.remove(bookId);
+                    Swal.fire({ icon: 'success', title: i18n.t('success'), timer: 1500, showConfirmButton: false, background: '#181818', color: '#fff' });
+                }
+            });
+        }
+
+        function clearAllHistory() {
+            Swal.fire({
+                title: i18n.t('confirmClearHistory'),
+                text: i18n.t('confirmClearHistoryText'),
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e50914',
+                cancelButtonColor: '#333',
+                confirmButtonText: i18n.t('confirm'),
+                cancelButtonText: i18n.t('cancel'),
+                background: '#181818',
+                color: '#fff'
+            }).then(r => {
+                if (r.isConfirmed) {
+                    watchHistory.clear();
+                    Swal.fire({ icon: 'success', title: i18n.t('historyCleared'), timer: 1500, showConfirmButton: false, background: '#181818', color: '#fff' });
+                }
             });
         }
     </script>
