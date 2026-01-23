@@ -333,15 +333,13 @@ const WatchPage = {
         document.getElementById('episodeBadge').textContent = `ตอนที่ ${ep}`;
 
         // Update episode list active state
-        document.querySelectorAll('.episode-btn').forEach(btn => {
-            btn.classList.toggle('active', parseInt(btn.dataset.index) === ep);
-        });
-
-        // Scroll to active episode
-        const activeBtn = document.querySelector('.episode-btn.active');
-        if (activeBtn) {
-            activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        const dropdown = document.getElementById('episodeSelect');
+        if (dropdown) {
+            dropdown.value = ep;
         }
+
+        // Update player status
+        this.updatePlayerStatus(`กำลังโหลด ตอนที่ ${ep}...`);
 
         // Update nav buttons
         this.updateEpisodeNav();
@@ -364,24 +362,30 @@ const WatchPage = {
     },
 
     renderEpisodeList() {
-        const container = document.getElementById('episodeList');
-        container.innerHTML = this.state.chapters.map((ch, i) => {
+        const dropdown = document.getElementById('episodeSelect');
+        if (!dropdown) return;
+
+        // Render dropdown options
+        dropdown.innerHTML = this.state.chapters.map((ch, i) => {
             const epNum = (ch.chapterIndex !== undefined ? ch.chapterIndex : i) + 1;
-            return `<button class="episode-btn ${epNum === this.state.currentEpisode ? 'active' : ''}" 
-                    data-index="${epNum}">ตอนที่ ${epNum}</button>`;
+            return `<option value="${epNum}" ${epNum === this.state.currentEpisode ? 'selected' : ''}>ตอนที่ ${epNum}</option>`;
         }).join('');
 
-        container.querySelectorAll('.episode-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const ep = parseInt(btn.dataset.index);
-                this.switchEpisode(ep);
-            });
-        });
+        // Add change handler
+        dropdown.onchange = () => {
+            const ep = parseInt(dropdown.value);
+            this.switchEpisode(ep);
+        };
 
-        // Scroll to active episode
-        const activeBtn = container.querySelector('.episode-btn.active');
-        if (activeBtn) {
-            activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        // Update status
+        this.updatePlayerStatus(`กำลังเล่น ตอนที่ ${this.state.currentEpisode}/${this.state.chapters.length}`);
+    },
+
+    updatePlayerStatus(message, type = '') {
+        const status = document.getElementById('playerStatus');
+        if (status) {
+            status.textContent = message;
+            status.className = 'player-status' + (type ? ` ${type}` : '');
         }
     },
 
@@ -465,10 +469,16 @@ const WatchPage = {
             if (playPause) playPause.innerHTML = '<i class="fas fa-play"></i>';
         });
 
-        // Auto play next episode when current ends
+        // Auto play next episode when current ends (if checkbox is checked)
         video?.addEventListener('ended', () => {
-            if (this.state.currentEpisode < this.state.chapters.length) {
+            const autoPlayCheckbox = document.getElementById('autoPlayNext');
+            const shouldAutoPlay = autoPlayCheckbox?.checked ?? true;
+
+            if (shouldAutoPlay && this.state.currentEpisode < this.state.chapters.length) {
+                this.updatePlayerStatus('กำลังเล่นตอนถัดไป...', 'success');
                 this.switchEpisode(this.state.currentEpisode + 1);
+            } else if (this.state.currentEpisode >= this.state.chapters.length) {
+                this.updatePlayerStatus('🎉 ดูจบทุกตอนแล้ว!', 'success');
             }
         });
 

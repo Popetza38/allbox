@@ -482,70 +482,169 @@
             cursor: not-allowed;
         }
 
-        /* Episode Carousel */
-        .episode-list {
+        /* Episode Controls - New Dropdown Style */
+        .episode-controls {
             display: flex;
+            align-items: center;
             gap: 12px;
-            overflow-x: auto;
-            padding: 8px 0 16px;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
-            scroll-snap-type: x mandatory;
+            margin-bottom: 16px;
         }
 
-        .episode-list::-webkit-scrollbar {
-            display: none;
-        }
-
-        .episode-btn {
-            flex: 0 0 auto;
-            min-width: 100px;
-            padding: 16px 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 14px;
+        .episode-dropdown {
+            flex: 1;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            color: white;
+            font-size: 15px;
             font-weight: 500;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            text-align: center;
-            scroll-snap-align: start;
             cursor: pointer;
-            position: relative;
-            overflow: hidden;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 44px;
+            transition: all 0.3s ease;
         }
 
-        .episode-btn::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(255, 71, 87, 0.15) 0%, rgba(255, 107, 157, 0.1) 100%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .episode-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border-color: rgba(255, 71, 87, 0.4);
-            transform: translateY(-4px);
-        }
-
-        .episode-btn:hover::before {
-            opacity: 1;
-        }
-
-        .episode-btn.active {
-            background: linear-gradient(135deg, rgba(255, 71, 87, 0.35) 0%, rgba(255, 107, 157, 0.25) 100%);
-            color: white;
+        .episode-dropdown:hover {
+            background-color: rgba(255, 255, 255, 0.12);
             border-color: var(--accent);
-            box-shadow: 0 6px 25px rgba(255, 71, 87, 0.35);
         }
 
-        .episode-btn.active::after {
-            content: '▶';
-            margin-left: 6px;
-            font-size: 10px;
+        .episode-dropdown:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.2);
+        }
+
+        .episode-dropdown option {
+            background: #1a1a2e;
+            color: white;
+            padding: 12px;
+        }
+
+        /* Episode Nav Buttons - Compact */
+        .episode-nav-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .episode-nav-btn {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .episode-nav-btn:hover:not(:disabled) {
+            background: var(--accent);
+            border-color: transparent;
+            transform: scale(1.05);
+        }
+
+        .episode-nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Player Options */
+        .player-options {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .auto-play-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .auto-play-toggle input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .toggle-text {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Subtitle Controls */
+        .subtitle-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .control-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .control-label i {
+            color: var(--accent);
+        }
+
+        .subtitle-dropdown {
+            flex: 1;
+            max-width: 200px;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        .subtitle-dropdown option {
+            background: #1a1a2e;
+            color: white;
+        }
+
+        /* Player Status */
+        .player-status {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+            padding: 8px 0;
+        }
+
+        .player-status.error {
+            color: #ff6b6b;
+        }
+
+        .player-status.success {
+            color: #00c896;
         }
 
         /* Responsive */
@@ -720,22 +819,45 @@
             </div>
         </div>
 
-        <!-- Episodes Section -->
+        <!-- Episodes Section - New Controls -->
         <section class="episodes-section">
             <div class="episodes-header">
                 <h3 class="episodes-title">
                     <i class="fas fa-list"></i> <span data-i18n="player.selectEpisode">เลือกตอน</span>
                 </h3>
+                <div class="player-options">
+                    <label class="auto-play-toggle">
+                        <input type="checkbox" id="autoPlayNext" checked>
+                        <span class="toggle-text">เล่นต่ออัตโนมัติ</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Episode Dropdown -->
+            <div class="episode-controls">
+                <select id="episodeSelect" class="episode-dropdown"></select>
                 <div class="episode-nav-btns">
                     <button class="episode-nav-btn" id="prevEpisodeBtn" disabled>
-                        <i class="fas fa-chevron-left"></i> <span data-i18n="player.prevEpisode">ก่อนหน้า</span>
+                        <i class="fas fa-step-backward"></i>
                     </button>
                     <button class="episode-nav-btn" id="nextEpisodeBtn">
-                        <span data-i18n="player.nextEpisode">ถัดไป</span> <i class="fas fa-chevron-right"></i>
+                        <i class="fas fa-step-forward"></i>
                     </button>
                 </div>
             </div>
-            <div class="episode-list" id="episodeList"></div>
+
+            <!-- Subtitle Selector (if available) -->
+            <div class="subtitle-controls" id="subtitleControls" style="display: none;">
+                <label class="control-label">
+                    <i class="fas fa-closed-captioning"></i> ซับไตเติ้ล
+                </label>
+                <select id="subtitleSelect" class="subtitle-dropdown">
+                    <option value="-1">ปิด</option>
+                </select>
+            </div>
+
+            <!-- Status -->
+            <div class="player-status" id="playerStatus"></div>
         </section>
     </main>
 
