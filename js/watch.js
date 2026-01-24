@@ -452,18 +452,23 @@ const WatchPage = {
             console.log('[VideoPlayer] Using native HLS support (iOS/Safari)');
 
             video.src = url;
+            video.preload = 'auto'; // Important for iOS
 
             const onCanPlay = () => {
                 console.log('[VideoPlayer] Native HLS ready to play');
                 loading?.classList.add('hidden');
 
-                // On iOS, show play overlay instead of auto-playing
-                if (this.state.isIOS) {
-                    overlay?.classList.remove('hidden');
-                } else {
-                    video.play().catch(e => {
-                        console.log('[VideoPlayer] Autoplay blocked:', e);
+                // Auto-play handling for iOS
+                const playPromise = video.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        overlay?.classList.add('hidden');
+                        document.getElementById('videoContainer').classList.remove('show-controls');
+                    }).catch(error => {
+                        console.log('[VideoPlayer] Autoplay prevented by browser:', error);
+                        // Show overlay to let user tap to play
                         overlay?.classList.remove('hidden');
+                        loading?.classList.add('hidden');
                     });
                 }
             };
@@ -471,25 +476,33 @@ const WatchPage = {
             const onError = (e) => {
                 console.error('[VideoPlayer] Native HLS error:', video.error);
                 loading?.classList.add('hidden');
+
+                // Retry once if error is network related
+                if (video.error?.code === 2 && !this.state.retried) {
+                    this.state.retried = true;
+                    setTimeout(() => {
+                        video.load();
+                        video.play();
+                    }, 1000);
+                    return;
+                }
+
                 overlay?.classList.remove('hidden');
 
-                // Show user-friendly error
                 const errorCode = video.error?.code;
-                if (errorCode === 2) {
-                    Common.showError('เกิดข้อผิดพลาดเครือข่าย กรุณาลองใหม่');
-                } else if (errorCode === 3) {
-                    Common.showError('รูปแบบวิดีโอไม่รองรับ');
-                } else if (errorCode === 4) {
-                    Common.showError('ไม่พบไฟล์วิดีโอ');
-                } else {
-                    Common.showError('ไม่สามารถโหลดวิดีโอได้');
+                let errorMsg = 'ไม่สามารถโหลดวิดีโอได้';
+                switch (errorCode) {
+                    case 2: errorMsg = 'เกิดข้อผิดพลาดเครือข่าย'; break;
+                    case 3: errorMsg = 'รูปแบบวิดีโอไม่รองรับ'; break;
+                    case 4: errorMsg = 'ไม่พบไฟล์วิดีโอ'; break;
                 }
+                Common.showError(errorMsg);
             };
 
-            video.addEventListener('canplay', onCanPlay, { once: true });
             video.addEventListener('loadedmetadata', () => {
-                console.log('[VideoPlayer] Metadata loaded, duration:', video.duration);
+                onCanPlay(); // Try to play as soon as metadata is there
             }, { once: true });
+
             video.addEventListener('error', onError, { once: true });
 
             // ===== Desktop: Use HLS.js for .m3u8 streams =====
@@ -730,13 +743,40 @@ const WatchPage = {
             if (playPause) playPause.innerHTML = '<i class="fas fa-play"></i>';
         });
 
-        // แสดงข้อความเมื่อวิดีโอจบ
+        // Video ended handler with Auto-play
         video?.addEventListener('ended', () => {
             document.getElementById('playOverlay')?.classList.remove('hidden');
-            if (this.state.currentEpisode >= this.state.chapters.length) {
-                this.updatePlayerStatus('🎉 ดูจบทุกตอนแล้ว!', 'success');
+
+            if (this.state.currentEpisode < this.state.chapters.length) {
+                this.updatePlayerStatus('ตอนจบแล้ว กำลังเล่นตอนต่อไป...', 'success');
+
+                // Auto-play next episode
+                let countdown = 5;
+                Swal.fire({
+                    title: 'เล่นตอนต่อไป',
+                    html: `จะเริ่มเล่นตอนที่ ${this.state.currentEpisode + 1} ใน <b>${countdown}</b> วินาที`,
+                    timer: 5000,
+                    timerProgressBar: true,
+                    showCancelButton: true,
+                    cancelButtonText: 'ยกเลิก',
+                    confirmButtonText: 'เล่นเลย',
+                    confirmButtonColor: '#ff4757',
+                    background: '#1a1a2e',
+                    color: '#fff',
+                    didOpen: () => {
+                        const b = Swal.getHtmlContainer().querySelector('b');
+                        const timer = setInterval(() => {
+                            countdown--;
+                            if (b) b.textContent = countdown;
+                        }, 1000);
+                    }
+                }).then((result) => {
+                    if (result.dismiss === Swal.DismissReason.timer || result.isConfirmed) {
+                        this.switchEpisode(this.state.currentEpisode + 1);
+                    }
+                });
             } else {
-                this.updatePlayerStatus('ตอนจบแล้ว กรุณาเลือกตอนถัดไป', 'success');
+                this.updatePlayerStatus('🎉 ดูจบทุกตอนแล้ว!', 'success');
             }
         });
 
