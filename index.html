@@ -1,363 +1,286 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="ดูซีรี่ย์ออนไลน์ฟรี ซีรี่ย์จีน ซีรี่ย์เกาหลี ซีรี่ย์ไทย พากย์ไทย ซับไทย คมชัด HD">
-    <meta name="keywords" content="ดูซีรี่ย์, ซีรี่ย์จีน, ซีรี่ย์เกาหลี, ซีรี่ย์ออนไลน์, พากย์ไทย, ซับไทย, Dramabox">
-    <meta name="author" content="DramaPop">
-    <meta name="theme-color" content="#1a1a2e">
-
-    <title>DramaPop - ดูซีรี่ย์ออนไลน์ฟรี</title>
-
-    <!-- PWA Meta Tags -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="DramaPop">
-    <link rel="apple-touch-icon" href="icons/icon-192.svg">
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
-
-    <!-- Google Fonts - Niramit -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Niramit:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
-
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AOT User Management Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
 </head>
+<body class="min-h-screen bg-slate-50 p-4 md:p-8 text-slate-900">
 
-<body>
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loader">
-            <div class="loader-logo">
-                <i class="fas fa-film"></i>
-                <span>DramaPop</span>
-            </div>
-            <div class="loader-spinner">
-                <div class="loader-ring"></div>
-                <div class="loader-ring"></div>
-                <div class="loader-ring"></div>
-            </div>
-            <span class="loader-text">
-                กำลังโหลด
-                <span class="loader-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </span>
-            </span>
+    <div id="app" class="max-w-full mx-auto">
+        <div class="mb-6 text-center">
+            <h1 class="text-3xl font-bold text-slate-800 mb-2 flex items-center justify-center gap-2">
+                <i data-lucide="building-2" class="text-blue-600"></i> AOT User Management Tool
+            </h1>
+            <p class="text-slate-600 font-medium italic underline decoration-blue-200">
+                แยกชื่อและกำหนดข้อมูลบริษัทอัตโนมัติ (Excel 8 คอลัมน์)
+            </p>
         </div>
-    </div>
 
-    <!-- Header -->
-    <header class="header" id="header">
-        <div class="header-container">
-            <a href="index.html" class="logo">
-                <i class="fas fa-film logo-icon"></i>
-                <span class="logo-text">DramaPop</span>
-            </a>
-
-            <div class="search-container">
-                <form class="search-form" id="searchForm">
-                    <input type="text" class="search-input" id="searchInput" placeholder="ค้นหาซีรี่ย์...">
-                    <button type="submit" class="search-btn">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </form>
+        <div class="mb-6 bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
+            <div class="flex items-center gap-2 mb-4 text-blue-700 font-bold border-b border-blue-50 pb-2">
+                <i data-lucide="settings-2" size="20"></i>
+                <h2>ตั้งค่าข้อมูล (Dropdown Settings)</h2>
             </div>
-
-            <nav class="nav-desktop">
-                <a href="index.html" class="nav-link active" data-page="home">
-                    <i class="fas fa-home"></i> <span data-i18n="nav.home">หน้าแรก</span>
-                </a>
-                <a href="category.html?type=new" class="nav-link" data-page="new">
-                    <i class="fas fa-star"></i> <span data-i18n="nav.new">มาใหม่</span>
-                </a>
-                <a href="category.html?type=ranking" class="nav-link" data-page="ranking">
-                    <i class="fas fa-trophy"></i> <span data-i18n="nav.popular">ยอดนิยม</span>
-                </a>
-                <a href="history.html" class="nav-link" data-page="history">
-                    <i class="fas fa-history"></i> <span data-i18n="nav.history">ประวัติ</span>
-                </a>
-            </nav>
-
-            <!-- Language Selector -->
-            <div class="language-selector" id="languageSelector">
-                <button class="language-btn" id="languageBtn">
-                    <span class="flag-icon">🇹🇭</span>
-                    <span class="lang-text">ไทย</span>
-                    <i class="fas fa-chevron-down"></i>
-                </button>
-                <div class="language-dropdown" id="languageDropdown">
-                    <div class="language-option active" data-lang="th">
-                        <span class="flag-icon">🇹🇭</span>
-                        <span>ไทย</span>
-                        <i class="fas fa-check"></i>
-                    </div>
-                    <div class="language-option" data-lang="en">
-                        <span class="flag-icon">🇺🇸</span>
-                        <span>English</span>
-                        <i class="fas fa-check"></i>
-                    </div>
-                    <div class="language-option" data-lang="zh">
-                        <span class="flag-icon">🇨🇳</span>
-                        <span>中文</span>
-                        <i class="fas fa-check"></i>
-                    </div>
-                    <div class="language-option" data-lang="ko">
-                        <span class="flag-icon">🇰🇷</span>
-                        <span>한국어</span>
-                        <i class="fas fa-check"></i>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                        <i data-lucide="file-text" size="14"></i> Description
+                    </label>
+                    <select id="descConfig" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"></select>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                        <i data-lucide="building-2" size="14"></i> Company / Authority
+                    </label>
+                    <select id="compConfig" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"></select>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                        <i data-lucide="users" size="14"></i> Group Name
+                    </label>
+                    <select id="groupConfig" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"></select>
                 </div>
             </div>
-
-            <button class="mobile-search-btn" id="mobileSearchBtn">
-                <i class="fas fa-search"></i>
-            </button>
         </div>
-    </header>
 
-    <!-- Mobile Search Modal -->
-    <div class="mobile-search-modal" id="mobileSearchModal">
-        <div class="mobile-search-container">
-            <form class="mobile-search-form" id="mobileSearchForm">
-                <button type="button" class="mobile-search-close" id="mobileSearchClose">
-                    <i class="fas fa-arrow-left"></i>
+        <div id="errorMessage" class="hidden mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700 max-w-2xl mx-auto">
+            <i data-lucide="alert-circle"></i>
+            <p id="errorText" class="text-sm font-medium"></p>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div class="xl:col-span-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-700">
+                        <i data-lucide="file-text" class="text-blue-500"></i> ข้อมูลนำเข้า
+                    </h2>
+                    <div class="flex gap-2">
+                        <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 border border-blue-100">
+                            <i data-lucide="upload" size="16"></i>
+                            เลือกไฟล์
+                            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.txt" class="hidden">
+                        </label>
+                        <button onclick="clearAll()" class="text-slate-400 hover:text-red-500 transition-colors">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <textarea id="inputText" class="w-full h-80 p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none text-xs mb-4 bg-slate-50/30 font-mono" placeholder="วางข้อมูลที่นี่... (A=Login, B=Name)"></textarea>
+
+                <button onclick="handleProcess()" id="processBtn" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95">
+                    <i data-lucide="play" size="20" fill="currentColor"></i> ประมวลผลและใช้การตั้งค่า
                 </button>
-                <input type="text" class="mobile-search-input" id="mobileSearchInput" placeholder="ค้นหาซีรี่ย์...">
-                <button type="submit" class="mobile-search-submit">
-                    <i class="fas fa-search"></i>
-                </button>
-            </form>
+            </div>
+
+            <div class="xl:col-span-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[560px]">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-700">
+                        <i data-lucide="check-circle-2" class="text-green-500"></i> ผลลัพธ์
+                    </h2>
+                    <button id="downloadBtn" onclick="downloadExcel()" class="hidden bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
+                        <i data-lucide="download" size="16"></i> Export Excel
+                    </button>
+                </div>
+
+                <div id="tableContainer" class="hidden overflow-auto border border-slate-100 rounded-xl flex-grow shadow-inner custom-scrollbar">
+                    <table class="w-full text-left text-[10px] border-collapse min-w-[1000px]">
+                        <thead class="bg-slate-100 sticky top-0 z-10 font-bold text-slate-700">
+                            <tr>
+                                <th class="p-2 border-b">Login name</th>
+                                <th class="p-2 border-b">First name</th>
+                                <th class="p-2 border-b">Last name</th>
+                                <th class="p-2 border-b">Description</th>
+                                <th class="p-2 border-b">Password</th>
+                                <th class="p-2 border-b">Repeat pwd</th>
+                                <th class="p-2 border-b">Company</th>
+                                <th class="p-2 border-b">Group</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+
+                <div id="emptyState" class="flex-grow flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+                    <i data-lucide="users" size="48" class="mb-3 opacity-20"></i>
+                    <p>ตารางจะแสดงผลข้อมูลตามที่คุณตั้งค่าไว้</p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <main class="main-content" id="mainContent">
-        <!-- Hero Section -->
-        <div class="hero-section">
-            <div class="hero-slider" id="heroSlider"></div>
-            <div class="hero-overlay"></div>
-            <div class="hero-content">
-                <h1 class="hero-title">ยินดีต้อนรับสู่ DramaPop</h1>
-                <p class="hero-subtitle">ดูซีรี่ย์ออนไลน์ฟรี คมชัด HD พากย์ไทย ซับไทย</p>
-            </div>
-        </div>
-
-        <!-- For You Section -->
-        <section class="content-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-heart"></i> <span data-i18n="sections.forYou">แนะนำสำหรับคุณ</span>
-                </h2>
-                <a href="category.html?type=foryou" class="see-all-btn">
-                    <span data-i18n="common.viewAll">ดูทั้งหมด</span> <i class="fas fa-chevron-right"></i>
-                </a>
-            </div>
-            <div class="drama-slider" id="forYouSlider" data-slider="forYou">
-                <button class="slider-nav prev"><i class="fas fa-chevron-left"></i></button>
-                <div class="drama-grid" id="forYouGrid"></div>
-                <button class="slider-nav next"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="slider-pagination" data-for="forYou"></div>
-        </section>
-
-        <!-- New Dramas Section -->
-        <section class="content-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-sparkles"></i> ซีรี่ย์มาใหม่
-                </h2>
-                <a href="category.html?type=new" class="see-all-btn">
-                    ดูทั้งหมด <i class="fas fa-chevron-right"></i>
-                </a>
-            </div>
-            <div class="drama-slider" id="newDramasSlider" data-slider="newDramas">
-                <button class="slider-nav prev"><i class="fas fa-chevron-left"></i></button>
-                <div class="drama-grid" id="newDramasGrid"></div>
-                <button class="slider-nav next"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="slider-pagination" data-for="newDramas"></div>
-        </section>
-
-        <!-- Ranking Section -->
-        <section class="content-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-trophy"></i> ยอดนิยม
-                </h2>
-                <a href="category.html?type=ranking" class="see-all-btn">
-                    ดูทั้งหมด <i class="fas fa-chevron-right"></i>
-                </a>
-            </div>
-            <div class="drama-slider" id="rankingSlider" data-slider="ranking">
-                <button class="slider-nav prev"><i class="fas fa-chevron-left"></i></button>
-                <div class="drama-grid" id="rankingGrid"></div>
-                <button class="slider-nav next"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="slider-pagination" data-for="ranking"></div>
-        </section>
-
-        <!-- Classify Section -->
-        <section class="content-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-fire"></i> มาแรง
-                </h2>
-                <a href="category.html?type=classify" class="see-all-btn">
-                    ดูทั้งหมด <i class="fas fa-chevron-right"></i>
-                </a>
-            </div>
-            <div class="drama-slider" id="classifySlider" data-slider="classify">
-                <button class="slider-nav prev"><i class="fas fa-chevron-left"></i></button>
-                <div class="drama-grid" id="classifyGrid"></div>
-                <button class="slider-nav next"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="slider-pagination" data-for="classify"></div>
-        </section>
-
-        <!-- Romance Section -->
-        <section class="content-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-heart"></i> โรแมนติก
-                </h2>
-                <a href="category.html?type=romance" class="see-all-btn">
-                    ดูทั้งหมด <i class="fas fa-chevron-right"></i>
-                </a>
-            </div>
-            <div class="drama-slider" id="romanceSlider" data-slider="romance">
-                <button class="slider-nav prev"><i class="fas fa-chevron-left"></i></button>
-                <div class="drama-grid" id="romanceGrid"></div>
-                <button class="slider-nav next"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="slider-pagination" data-for="romance"></div>
-        </section>
-
-        <!-- CEO Section -->
-        <section class="content-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-briefcase"></i> ท่านประธาน
-                </h2>
-                <a href="category.html?type=ceo" class="see-all-btn">
-                    ดูทั้งหมด <i class="fas fa-chevron-right"></i>
-                </a>
-            </div>
-            <div class="drama-slider" id="ceoSlider" data-slider="ceo">
-                <button class="slider-nav prev"><i class="fas fa-chevron-left"></i></button>
-                <div class="drama-grid" id="ceoGrid"></div>
-                <button class="slider-nav next"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="slider-pagination" data-for="ceo"></div>
-        </section>
-
-        <!-- Fantasy Section -->
-        <section class="content-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-wand-magic-sparkles"></i> แฟนตาซี
-                </h2>
-                <a href="category.html?type=fantasy" class="see-all-btn">
-                    ดูทั้งหมด <i class="fas fa-chevron-right"></i>
-                </a>
-            </div>
-            <div class="drama-slider" id="fantasySlider" data-slider="fantasy">
-                <button class="slider-nav prev"><i class="fas fa-chevron-left"></i></button>
-                <div class="drama-grid" id="fantasyGrid"></div>
-                <button class="slider-nav next"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="slider-pagination" data-for="fantasy"></div>
-        </section>
-
-        <!-- Period Section -->
-        <section class="content-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-crown"></i> พีเรียด/ย้อนยุค
-                </h2>
-                <a href="category.html?type=period" class="see-all-btn">
-                    ดูทั้งหมด <i class="fas fa-chevron-right"></i>
-                </a>
-            </div>
-            <div class="drama-slider" id="periodSlider" data-slider="period">
-                <button class="slider-nav prev"><i class="fas fa-chevron-left"></i></button>
-                <div class="drama-grid" id="periodGrid"></div>
-                <button class="slider-nav next"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="slider-pagination" data-for="period"></div>
-        </section>
-
-        <!-- Revenge Section -->
-        <section class="content-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-fist-raised"></i> แก้แค้น
-                </h2>
-                <a href="category.html?type=revenge" class="see-all-btn">
-                    ดูทั้งหมด <i class="fas fa-chevron-right"></i>
-                </a>
-            </div>
-            <div class="drama-slider" id="revengeSlider" data-slider="revenge">
-                <button class="slider-nav prev"><i class="fas fa-chevron-left"></i></button>
-                <div class="drama-grid" id="revengeGrid"></div>
-                <button class="slider-nav next"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="slider-pagination" data-for="revenge"></div>
-        </section>
-    </main>
-
-    <!-- Bottom Navigation (Mobile) -->
-    <nav class="bottom-nav" id="bottomNav">
-        <a href="index.html" class="bottom-nav-item active" data-page="home">
-            <i class="fas fa-home"></i>
-            <span data-i18n="nav.home">หน้าแรก</span>
-        </a>
-        <a href="category.html?type=new" class="bottom-nav-item" data-page="new">
-            <i class="fas fa-star"></i>
-            <span data-i18n="nav.new">มาใหม่</span>
-        </a>
-        <a href="category.html?type=ranking" class="bottom-nav-item" data-page="ranking">
-            <i class="fas fa-trophy"></i>
-            <span data-i18n="nav.popular">ยอดนิยม</span>
-        </a>
-        <a href="history.html" class="bottom-nav-item" data-page="history">
-            <i class="fas fa-history"></i>
-            <span data-i18n="nav.history">ประวัติ</span>
-        </a>
-    </nav>
-
-    <!-- Scripts -->
-    <script src="js/api.js"></script>
-    <script src="js/i18n.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/home.js"></script>
-
-    <!-- Service Worker Registration -->
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('SW registered:', reg.scope))
-                    .catch(err => console.log('SW registration failed:', err));
-            });
+        // Data Options
+        const DESCRIPTION_OPTIONS = ["AOT Screening Operator", "AOT AVSEC", "AOT Inspectors Operator", "AOT Inspectors Service", "AOT Supervisor", "AOT Technician", "T.T.S Service"];
+        const COMPANY_OPTIONS = ["AOT BKK", "T.T.S.", "AOT AVSEC", "Smiths Heimann"];
+        const titlesList = ['MASTER', 'SGT', 'LT', 'MAJOR', 'COL', 'CAPT', 'REV', 'MDM', 'MADAM', 'SIR', 'PROF', 'DR', 'MISS', 'MS', 'MR', 'MRS'];
+
+        let processedResults = [];
+
+        // Initialize UI
+        function init() {
+            const populateSelect = (id, options) => {
+                const select = document.getElementById(id);
+                options.forEach(opt => {
+                    const el = document.createElement('option');
+                    el.value = el.textContent = opt;
+                    select.appendChild(el);
+                });
+            };
+            populateSelect('descConfig', DESCRIPTION_OPTIONS);
+            populateSelect('compConfig', COMPANY_OPTIONS);
+            populateSelect('groupConfig', DESCRIPTION_OPTIONS);
+            lucide.createIcons();
         }
+
+        // Split Name Logic
+        function splitName(fullName) {
+            if (!fullName) return { firstName: '', lastName: '' };
+            let cleanName = fullName.trim();
+            let title = "";
+            let lastName = "";
+
+            const titleRegex = new RegExp(`^(${titlesList.join('|')})(\\.?\\s*|\\s+|$)`, 'i');
+            const match = cleanName.match(titleRegex);
+
+            let remainingPart = cleanName;
+            if (match) {
+                title = match[1].toUpperCase();
+                if (title !== 'MISS' && !title.endsWith('.')) title += '.';
+                remainingPart = cleanName.substring(match[0].length).trim();
+            }
+
+            const parts = remainingPart.split(/\s+/).filter(p => p.length > 0);
+            let firstName = parts[0] || "";
+            if (parts.length >= 2) lastName = parts.slice(1).join(' ');
+
+            return {
+                firstName: title ? `${title} ${firstName.toUpperCase()}`.trim() : firstName.toUpperCase(),
+                lastName: lastName.toUpperCase()
+            };
+        }
+
+        // Process Data
+        function handleProcess() {
+            const text = document.getElementById('inputText').value;
+            if (!text.trim()) return;
+
+            const config = {
+                description: document.getElementById('descConfig').value,
+                company: document.getElementById('compConfig').value,
+                groupName: document.getElementById('groupConfig').value
+            };
+
+            try {
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                processedResults = lines.map(line => {
+                    let loginName = "", fullNamePart = "";
+                    if (line.includes(',')) {
+                        const cols = line.split(',');
+                        loginName = cols[0].trim();
+                        fullNamePart = (cols[1] || '').trim();
+                        if (/name|รหัส|login/i.test(loginName)) return null;
+                    } else {
+                        fullNamePart = line.trim();
+                    }
+
+                    if (!fullNamePart && !loginName) return null;
+                    const splitData = splitName(fullNamePart);
+                    const pwd = loginName ? `${loginName}0` : "";
+
+                    return { loginName, ...splitData, ...config, password: pwd };
+                }).filter(Boolean);
+
+                renderTable();
+            } catch (err) {
+                showError("เกิดข้อผิดพลาดในการประมวลผล");
+            }
+        }
+
+        function renderTable() {
+            const body = document.getElementById('resultBody');
+            body.innerHTML = '';
+            processedResults.forEach(res => {
+                const row = `
+                    <tr class="hover:bg-blue-50/50 border-b border-slate-50">
+                        <td class="p-2 border-r font-mono">${res.loginName}</td>
+                        <td class="p-2 border-r text-blue-700 font-bold">${res.firstName}</td>
+                        <td class="p-2 border-r text-slate-500">${res.lastName}</td>
+                        <td class="p-2 border-r">${res.description}</td>
+                        <td class="p-2 border-r text-orange-600 font-mono">${res.password}</td>
+                        <td class="p-2 border-r text-orange-600 font-mono">${res.password}</td>
+                        <td class="p-2 border-r">${res.company}</td>
+                        <td class="p-2">${res.groupName}</td>
+                    </tr>`;
+                body.insertAdjacentHTML('beforeend', row);
+            });
+
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('tableContainer').classList.remove('hidden');
+            document.getElementById('downloadBtn').classList.remove('hidden');
+        }
+
+        // File Upload
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            
+            if (file.name.match(/\.(xlsx|xls)$/)) {
+                reader.onload = (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, {type: 'array'});
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(ws, {header: 1});
+                    document.getElementById('inputText').value = rows.map(r => r.join(',')).join('\n');
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.onload = (e) => document.getElementById('inputText').value = e.target.result;
+                reader.readAsText(file);
+            }
+        });
+
+        // Export Excel
+        function downloadExcel() {
+            const data = [
+                ["Login name", "First name", "Last name", "Description", "Password", "Repeat password", "First Name of company / authority", "Group name"],
+                ...processedResults.map(r => [r.loginName, r.firstName, r.lastName, r.description, r.password, r.password, r.company, r.groupName])
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Users");
+            XLSX.writeFile(wb, `aot_import_${new Date().getTime()}.xlsx`);
+        }
+
+        function clearAll() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('resultBody').innerHTML = '';
+            document.getElementById('tableContainer').classList.add('hidden');
+            document.getElementById('downloadBtn').classList.add('hidden');
+            document.getElementById('emptyState').classList.remove('hidden');
+        }
+
+        function showError(msg) {
+            const err = document.getElementById('errorMessage');
+            document.getElementById('errorText').textContent = msg;
+            err.classList.remove('hidden');
+            setTimeout(() => err.classList.add('hidden'), 3000);
+        }
+
+        init();
     </script>
 </body>
-
 </html>
